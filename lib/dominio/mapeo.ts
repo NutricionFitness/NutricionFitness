@@ -75,6 +75,18 @@ export function aComponente(
 }
 
 /**
+ * Cuántos componentes tiene la dieta en total.
+ *
+ * Existe porque una dieta recién creada tiene sus comidas pero ningún
+ * componente, y eso NO es un error: es su estado normal hasta que se le añade
+ * el primer ingrediente. Quien vaya a llamar a `aDieta` debe comprobar esto
+ * antes, porque el motor sí exige al menos un componente.
+ */
+export function contarComponentes(d: Pick<DietaCompleta, "comidas">): number {
+  return (d.comidas ?? []).reduce((n, m) => n + (m.componentes?.length ?? 0), 0);
+}
+
+/**
  * Convierte la dieta que devuelve la base en la que consume el motor, y
  * devuelve además los ids en el mismo orden, que es lo que permite volver a
  * casar cada resultado con su fila al guardar.

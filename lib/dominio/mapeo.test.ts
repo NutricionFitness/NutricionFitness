@@ -8,6 +8,7 @@ import {
   aIngrediente,
   aNumero,
   aNumeroOpcional,
+  contarComponentes,
   ErrorMapeo,
   gramosAGuardar,
 } from "./mapeo";
@@ -231,5 +232,37 @@ describe("vuelta a la base", () => {
     expect(fila.factible).toBe(false);
     expect(fila.kcal_final).toBeNull();
     expect(fila.motivo).toContain("rango alcanzable");
+  });
+});
+
+describe("dieta recién creada", () => {
+  /**
+   * Regresión: al crear una dieta nueva se cayó la pantalla entera con
+   * «la dieta no tiene componentes». Una dieta con sus comidas y ningún
+   * ingrediente es el estado NORMAL de partida, no un error, y quien la vaya a
+   * pintar tiene que poder distinguirlo antes de tocar el motor.
+   */
+  it("una dieta con comidas pero sin componentes se detecta como vacía", () => {
+    const d = dietaBase();
+    d.comidas.forEach((m) => (m.componentes = []));
+    expect(contarComponentes(d)).toBe(0);
+  });
+
+  it("cuenta bien los componentes repartidos entre comidas", () => {
+    expect(contarComponentes(dietaBase())).toBe(3);
+  });
+
+  it("aguanta comidas sin lista de componentes y dietas sin comidas", () => {
+    expect(contarComponentes({ comidas: [] } as never)).toBe(0);
+    expect(contarComponentes({} as never)).toBe(0);
+    const d = dietaBase();
+    (d.comidas[0] as { componentes?: unknown }).componentes = undefined;
+    expect(contarComponentes(d)).toBe(2);
+  });
+
+  it("aDieta sigue rechazando la dieta vacía: el motor exige un componente", () => {
+    const d = dietaBase();
+    d.comidas.forEach((m) => (m.componentes = []));
+    expect(() => aDieta(d)).toThrow(ErrorMapeo);
   });
 });

@@ -11,7 +11,8 @@ import {
   borrarComponente,
 } from "@/app/dietas/[id]/acciones";
 import BuscadorIngrediente from "./BuscadorIngrediente";
-import { aDieta, gramosAGuardar } from "@/lib/dominio/mapeo";
+import DietaVacia from "./DietaVacia";
+import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
 import {
   ajustar,
@@ -26,7 +27,7 @@ import {
 
 const redondear1 = (v: number) => Math.round(v * 10) / 10;
 
-export default function EditorDieta({ dieta: filas }: { dieta: DietaCompleta }) {
+function EditorCompleto({ filas }: { filas: DietaCompleta }) {
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
 
@@ -359,5 +360,21 @@ export default function EditorDieta({ dieta: filas }: { dieta: DietaCompleta }) 
         </p>
       </aside>
     </div>
+  );
+}
+
+/**
+ * Punto de entrada.
+ *
+ * No lleva hooks a propósito: decide cuál de los dos editores toca y delega. Una
+ * dieta sin componentes no puede pasar por `aDieta`, porque el motor exige al
+ * menos uno; intentarlo era lo que reventaba la pantalla al crear una dieta
+ * nueva.
+ */
+export default function EditorDieta({ dieta: filas }: { dieta: DietaCompleta }) {
+  return contarComponentes(filas) === 0 ? (
+    <DietaVacia filas={filas} />
+  ) : (
+    <EditorCompleto filas={filas} />
   );
 }
