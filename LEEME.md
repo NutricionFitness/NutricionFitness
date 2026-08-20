@@ -30,6 +30,10 @@ En el **SQL Editor** de Supabase, ejecuta en este orden:
 
 1. `supabase/migraciones/0001_esquema.sql`
 2. `supabase/migraciones/0002_guardar_ajuste.sql`
+3. `supabase/migraciones/0003_linaje.sql`
+
+Si ya tenías la base creada de antes, te basta con ejecutar la que falte: cada
+migración es independiente y se puede volver a ejecutar sin romper nada.
 
 No ejecutes nada de `supabase/pruebas/`: eso es el andamio para probar en local.
 
@@ -110,17 +114,20 @@ Importas el repositorio, pegas las dos variables `NEXT_PUBLIC_*` (la
 supabase/
   migraciones/0001_esquema.sql          tablas, restricciones, RLS
   migraciones/0002_guardar_ajuste.sql   guardar un ajuste como versión nueva
+  migraciones/0003_linaje.sql           árbol de versiones y totales por comida
   pruebas/                              andamio y pruebas contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor  (14 tests)
+  dominio/        conversión filas ↔ motor y comparador  (28 tests)
   supabase/       clientes de navegador y servidor
 app/
-  login, cuenta, personas, personas/[id], dietas/[id], ingredientes
+  login, cuenta, personas, personas/[id], dietas/[id],
+  dietas/[id]/historial, comparar, ingredientes
 components/
   EditorDieta.tsx          la pantalla de trabajo
+  DietaVacia.tsx           una dieta recién creada, antes del primer ingrediente
   BuscadorIngrediente.tsx
   FormularioContrasena.tsx
 middleware.ts              refresca la sesión y cierra el paso
@@ -196,6 +203,27 @@ ordena de forma estable y devuelve los ids en paralelo, y `gramosAGuardar`
 **revienta** si las longitudes no coinciden. Guardar gramos cruzados en silencio
 sería el peor fallo posible de esta aplicación.
 
+### Comparar versiones es un problema de emparejar, no de restar
+
+Al guardar un ajuste se **clona** la dieta, así que la versión nueva tiene los
+mismos alimentos con identificadores distintos. Emparejar por id no sirve de
+nada: hay que casarlos por comida e ingrediente, y contemplar que entre una
+versión y otra se haya añadido o quitado algo, porque nada impide editar una
+versión después de crearla.
+
+`compararDietas()` hace eso, incluido el caso de que el mismo alimento aparezca
+dos veces en la misma comida —se emparejan en orden de aparición—. Son 10 tests,
+uno de ellos comprobando que comparar en el sentido contrario invierte los
+signos.
+
+### El linaje se recorre en dos pasos
+
+Las versiones forman un árbol encadenado por `dieta_padre_id`. Desde la versión
+3 quieres ver también de dónde viene, no solo lo que cuelga de ella, así que
+`linaje_dieta()` primero sube hasta la raíz y luego baja recogiéndolo todo. Con
+`SECURITY INVOKER`, para que nadie vea el linaje de otro —probado en los dos
+sentidos—.
+
 ### Una dieta nueva nace con sus cinco comidas
 
 Crear una dieta y encontrarse una pantalla en blanco es un mal comienzo. Se
@@ -223,9 +251,9 @@ subas a Supabase**: allí ya existe.
 
 ## Qué falta
 
-- Comparar dos versiones de una dieta lado a lado.
-- Historial de ajustes en la ficha de la persona (los datos ya se guardan).
-- Medidas caseras y factores crudo↔cocido, que están en el concepto y siguen
-  pendientes.
-- Sustitución de ingredientes: la función que resuelve el techo del reparto de
-  macros que encontramos en la fase 0.
+- **Medidas caseras y factores crudo↔cocido**: 1 huevo = 53 g comestibles,
+  arroz crudo → cocido. Quita la fuente de error más común del día a día.
+- **Sustitución de ingredientes**: la función que resuelve el techo del reparto
+  de macros que encontramos en la fase 0.
+- **Pulido**: renombrar y borrar dietas y personas, límites mínimo y máximo por
+  componente, reordenar.

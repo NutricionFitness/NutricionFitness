@@ -47,7 +47,8 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
       <p className="sub">
         Versión {data.version}
         {data.dieta_padre_id ? " · procede de un ajuste" : ""} · cantidades en{" "}
-        {data.estado_cantidades}
+        {data.estado_cantidades} ·{" "}
+        <Link href={`/dietas/${data.id}/historial`}>ver historial</Link>
       </p>
       <EditorDieta dieta={data as unknown as DietaCompleta} />
     </>

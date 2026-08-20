@@ -116,9 +116,23 @@ function EditorCompleto({ filas }: { filas: DietaCompleta }) {
                 />
               </section>
             );
+          const kcalComida = componentes.reduce(
+            (t, c) => t + (Number(c.gramos) * Number(c.ingredientes.kcal_100)) / 100,
+            0,
+          );
+          const kcalPropuesta = componentes.reduce((t, c) => {
+            const cb = porId.get(c.id);
+            return t + (cb ? cb.kcalDespues : 0);
+          }, 0);
           return (
             <section key={comida.id}>
-              <h2>{comida.nombre}</h2>
+              <h2>
+                {comida.nombre}{" "}
+                <span className="suave" style={{ fontWeight: 400, fontSize: 14 }}>
+                  {Math.round(kcalComida)} kcal
+                  {hayCambios && ` → ${Math.round(kcalPropuesta)}`}
+                </span>
+              </h2>
               <table>
                 <thead>
                   <tr>
