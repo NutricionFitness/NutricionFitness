@@ -59,16 +59,42 @@ modifica nadie. Es idempotente, puedes relanzarlo.
 Al terminar comprueba que la base calcula bien la energía de un ingrediente
 conocido. Si eso falla, algo se ha cargado mal y lo dice.
 
-### 5. Correo de acceso
+### 5. Tu usuario
 
-En **Authentication → URL Configuration** añade a *Redirect URLs*:
+La app entra con **correo y contraseña**. El registro público está cerrado a
+propósito: es tu herramienta de trabajo, no un servicio abierto.
+
+En Supabase, **Authentication → Providers → Email**:
+
+- *Enable Email provider*: activado.
+- *Confirm email*: puedes dejarlo activado; da igual, porque el usuario lo vas a
+  crear tú ya confirmado.
+
+En **Authentication → Users → Add user → Create new user**:
+
+- Correo y contraseña.
+- Marca **Auto Confirm User**. Si no lo marcas, no podrás entrar hasta confirmar
+  desde un correo.
+
+Y en **Authentication → Providers → Email**, desactiva *Allow new users to sign
+up*: sin eso, cualquiera que dé con la URL puede crearse una cuenta.
+
+Para más adelante, si necesitas dar acceso a alguien más, es el mismo camino:
+crear el usuario desde el panel. Cada usuario ve solo sus personas y sus dietas
+—eso es lo que garantizan las políticas de acceso, y está probado—.
+
+**Solo hay un momento en que la app manda un correo**: cuando pulsas «He olvidado
+la contraseña». Para que ese enlace funcione, en **Authentication → URL
+Configuration** añade a *Redirect URLs*:
 
 ```
 http://localhost:3000/auth/callback
 https://TU-APP.vercel.app/auth/callback
 ```
 
-Sin esto el enlace del correo te devuelve a un error.
+La sesión se mantiene: no tienes que entrar cada vez que abres la app. Si quieres
+que dure más antes de pedirte la contraseña otra vez, sube *JWT expiry* en
+**Authentication → Sessions**.
 
 ### 6. Vercel
 
@@ -92,10 +118,11 @@ lib/
   dominio/        conversión filas ↔ motor  (14 tests)
   supabase/       clientes de navegador y servidor
 app/
-  login, personas, personas/[id], dietas/[id], ingredientes
+  login, cuenta, personas, personas/[id], dietas/[id], ingredientes
 components/
   EditorDieta.tsx          la pantalla de trabajo
   BuscadorIngrediente.tsx
+  FormularioContrasena.tsx
 middleware.ts              refresca la sesión y cierra el paso
 ```
 
@@ -141,6 +168,17 @@ falle la tercera deja una dieta a medias. Están dentro de `guardar_ajuste()`, c
 `SECURITY DEFINER` aquí permitiría clonar la dieta de cualquiera—.
 
 Hay una prueba que corta a mitad y comprueba que no queda nada suelto.
+
+### Correo y contraseña, no enlace mágico
+
+La primera versión entraba con un enlace enviado al correo. Sobre el papel es más
+seguro —no hay contraseña que robar— pero en la práctica significaba pedir el
+correo y esperar un mensaje cada vez, y eso para una herramienta que se abre
+varias veces al día es un peaje absurdo.
+
+Ahora es usuario y contraseña, con el registro público cerrado. El mensaje de
+error al fallar es genérico a propósito: distinguir «ese correo no existe» de «la
+contraseña no es esa» le diría a un desconocido qué cuentas hay dadas de alta.
 
 ### Los `numeric` de PostgreSQL llegan como cadenas
 

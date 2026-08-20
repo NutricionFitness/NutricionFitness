@@ -58,3 +58,8 @@ button.principal:disabled { opacity: .5; cursor: default; }
 .mas { color: var(--bien); }
 .menos { color: var(--aviso); }
 .vacio { color: var(--suave); padding: 28px 0; }
+
+button.enlace {
+  border: none; background: none; padding: 0;
+  color: var(--acento); cursor: pointer; font: inherit;
+}

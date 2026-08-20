@@ -5,3 +5,7 @@ node_modules/
 coverage/
 *.tsbuildinfo
 next-env.d.ts
+
+# restos de las entregas
+_basura/
+_paquete_original.zip
