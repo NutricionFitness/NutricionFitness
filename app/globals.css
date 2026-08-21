@@ -401,6 +401,11 @@ button.enlace:hover:not(:disabled) {
   background: none;
   text-decoration: underline;
 }
+/* Una acción de texto que borra: se ve venir por el color, no por el sitio. */
+button.enlace.peligroso {
+  color: var(--peligro);
+  font-weight: 500;
+}
 
 button.peligro {
   background: var(--peligro);
@@ -817,7 +822,7 @@ tr.total td {
   padding: 8px 12px;
   border-top: 1px solid var(--linea);
 }
-.comida .acciones {
+.acciones {
   display: flex;
   gap: 2px;
   justify-content: flex-end;
@@ -947,11 +952,15 @@ tr.total td {
     min-width: 196px;
     max-width: 210px;
   }
-  /* La fila de sustitución ocupa todo el ancho: no se pega a nada. */
-  .comida table td.sustitucion {
+  /* Las filas que ocupan todo el ancho no se pegan a nada. */
+  .comida table td.sustitucion,
+  .comida table td.celda-ayuda {
     position: static;
+    min-width: 0;
     max-width: none;
     box-shadow: none;
+  }
+  .comida table td.sustitucion {
     background: var(--panel-2);
   }
   .sustitucion table {
@@ -1010,6 +1019,99 @@ tr.total td {
 .medidor .delta {
   font-family: var(--cifras);
   font-size: 13px;
+}
+
+/* ========================================================== ayuda ======== */
+
+button.icono.ayuda-boton {
+  width: 22px;
+  height: 22px;
+  color: var(--tenue);
+}
+button.icono.ayuda-boton[aria-expanded="true"] {
+  background: var(--acento-suave);
+  border-color: transparent;
+  color: var(--acento);
+}
+.th-ayuda {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ayuda {
+  display: grid;
+  gap: 9px;
+  max-width: 66ch;
+  margin: 10px 0 18px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-left: 3px solid var(--acento);
+  border-radius: var(--r-m);
+  box-shadow: var(--sombra-1);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.ayuda h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--tinta);
+}
+.ayuda p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--suave);
+}
+.ayuda ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 3px;
+  font-size: 13.5px;
+  color: var(--suave);
+}
+.ayuda strong {
+  color: var(--tinta);
+  font-weight: 600;
+}
+.ayuda button.enlace {
+  justify-self: start;
+  font-size: 13px;
+}
+.celda-ayuda {
+  padding: 0 16px !important;
+  background: var(--panel);
+}
+.celda-ayuda .ayuda {
+  margin: 12px 0;
+}
+
+.chip.tope {
+  color: var(--aviso);
+  background: var(--aviso-suave);
+  border-color: transparent;
+}
+
+.nota-tope {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: var(--r-s);
+  background: var(--aviso-suave);
+  color: var(--aviso);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.nota-tope strong {
+  font-size: 13px;
+}
+.nota-tope p {
+  margin: 0;
 }
 
 /* ================================================= panel sustitución ===== */

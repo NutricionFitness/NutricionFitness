@@ -4,6 +4,7 @@ import { useTransition } from "react";
 
 import { borrarDieta, duplicarDieta } from "@/app/dietas/[id]/acciones";
 import BotonPeligroso from "./BotonPeligroso";
+import { IconoCopiar, IconoPapelera } from "./Iconos";
 
 /** Duplicar y borrar desde el listado, sin tener que entrar en la dieta. */
 export default function AccionesDieta({
@@ -18,16 +19,20 @@ export default function AccionesDieta({
   const [pendiente, iniciar] = useTransition();
 
   return (
-    <span className="fila" style={{ gap: 10, justifyContent: "flex-end" }}>
+    <span className="acciones">
       <button
-        className="enlace"
+        className="icono"
+        title="Duplicar la dieta"
+        aria-label="Duplicar la dieta"
         disabled={pendiente}
         onClick={() => iniciar(() => duplicarDieta(dietaId))}
       >
-        duplicar
+        <IconoCopiar />
       </button>
       <BotonPeligroso
-        etiqueta="borrar"
+        clase="icono quitar"
+        titulo="Eliminar la dieta"
+        etiqueta={<IconoPapelera />}
         aviso={
           tieneVersiones
             ? "Se borra solo esta versión; las demás se conservan."

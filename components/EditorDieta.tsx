@@ -18,6 +18,7 @@ import AnadirComida from "./AnadirComida";
 import BuscadorIngrediente from "./BuscadorIngrediente";
 import PanelSustitucion from "./PanelSustitucion";
 import DietaVacia from "./DietaVacia";
+import { IconoAyuda } from "./Iconos";
 import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
 import {
   conversionDisponible,
@@ -63,6 +64,7 @@ function EditorCompleto({
   const [holgura, setHolgura] = useState(40);
   const [sustituyendo, setSustituyendo] = useState<string | null>(null);
   const [verLimites, setVerLimites] = useState(false);
+  const [ayudaPrioridad, setAyudaPrioridad] = useState<string | null>(null);
 
   // El bloque de ajuste ocupaba una columna fija a la derecha aunque no se
   // estuviera usando. Ahora entra y sale: la dieta se lee a todo lo ancho y el
@@ -127,6 +129,41 @@ function EditorCompleto({
   // --- índice de los cambios por posición, para pintarlos junto a cada fila ---
   const porId = new Map(idsComponentes.map((id, i) => [id, resultado.cambios[i]]));
   const comidas = [...(filas.comidas ?? [])].sort((a, b) => a.orden - b.orden);
+
+  // --- de dónde viene cada tope -------------------------------------------
+  // Un componente sin mín/máx propios NO va suelto: el motor le pone
+  // gramos·(1 ± holgura). Por eso salen «tope» ingredientes a los que no se les
+  // ha fijado nada, y por eso hay que decir en voz alta de dónde sale el número.
+  let topesMargen = 0;
+  let topesPropios = 0;
+  for (const m of comidas)
+    for (const c of m.componentes ?? []) {
+      if (!porId.get(c.id)?.enLimite) continue;
+      if (c.min_g !== null || c.max_g !== null) topesPropios++;
+      else topesMargen++;
+    }
+  // El motor ya avisa con un «en su límite: a, b, c» que no explica nada; aquí
+  // se sustituye por el aviso largo de abajo.
+  const avisosMotor = resultado.avisos.filter((a) => !a.startsWith("en su límite:"));
+
+  const nTopes = topesMargen + topesPropios;
+  const frasesTope: string[] = [];
+  if (topesMargen > 0)
+    frasesTope.push(
+      topesMargen === 1
+        ? `A uno se lo pone el margen por componente de aquí arriba: con ±${holgura}% no puede alejarse más de esa proporción de los gramos que tiene ahora, aunque tú no le hayas fijado nada. Sube el margen para darle más juego.`
+        : `A ${topesMargen} se lo pone el margen por componente de aquí arriba: con ±${holgura}% no pueden alejarse más de esa proporción de los gramos que tienen ahora, aunque tú no les hayas fijado nada. Sube el margen para darles más juego.`,
+    );
+  if (topesPropios > 0)
+    frasesTope.push(
+      topesMargen > 0
+        ? topesPropios === 1
+          ? "Otro ha llegado al mínimo o al máximo que le fijaste tú."
+          : `Otros ${topesPropios} han llegado al mínimo o al máximo que les fijaste tú.`
+        : topesPropios === 1
+          ? "Ha llegado al mínimo o al máximo que le fijaste tú."
+          : "Han llegado al mínimo o al máximo que les fijaste tú.",
+    );
 
   // La dieta declara si sus cantidades van en crudo o en cocido. Si además
   // contiene alimentos del estado contrario, los gramos no significan lo mismo
@@ -266,13 +303,87 @@ function EditorCompleto({
                     <th className="num">Gramos</th>
                     {hayCambios && <th className="num">Propuesta</th>}
                     <th className="num">kcal</th>
-                    <th className="num">Prioridad</th>
+                    <th className="num">
+                      <span className="th-ayuda">
+                        Prioridad
+                        <button
+                          className="icono ayuda-boton"
+                          aria-expanded={ayudaPrioridad === comida.id}
+                          title="Qué es la prioridad"
+                          aria-label="Qué es la prioridad"
+                          onClick={() =>
+                            setAyudaPrioridad(
+                              ayudaPrioridad === comida.id ? null : comida.id,
+                            )
+                          }
+                        >
+                          <IconoAyuda />
+                        </button>
+                      </span>
+                    </th>
                     {verLimites && <th className="num">Mín</th>}
                     {verLimites && <th className="num">Máx</th>}
                     <th />
                   </tr>
                 </thead>
                 <tbody>
+                  {ayudaPrioridad === comida.id && (
+                    <tr>
+                      <td colSpan={9} className="celda-ayuda">
+                        <div className="ayuda">
+                          <h3>Qué es la prioridad</h3>
+                          <p>
+                            Es lo dispuesto que está cada ingrediente a absorber el
+                            cambio cuando ajustas las kilocalorías. No cambia nada
+                            por sí sola: solo decide a quién se le carga la
+                            diferencia.
+                          </p>
+                          <ul>
+                            <li>
+                              <strong>No tocar</strong> — se queda clavado en sus
+                              gramos, pase lo que pase.
+                            </li>
+                            <li>
+                              <strong>Poco</strong> — absorbe la tercera parte que
+                              uno normal.
+                            </li>
+                            <li>
+                              <strong>Normal</strong> — la referencia.
+                            </li>
+                            <li>
+                              <strong>Bastante</strong> — el doble que uno normal.
+                            </li>
+                            <li>
+                              <strong>Mucho</strong> — el cuádruple que uno normal.
+                            </li>
+                          </ul>
+                          <p>
+                            El reparto va en kilocalorías, no en gramos: si a un
+                            ingrediente le tocan el doble de kcal que a otro, los
+                            gramos que se mueven dependen de lo que engorde cada uno.
+                          </p>
+                          <p>
+                            Solo se usa con el reparto{" "}
+                            <strong>«prioridades»</strong>, que es el que viene
+                            puesto. Los otros tres modos la ignoran —reparten a
+                            partes iguales o en proporción al tamaño—, pero{" "}
+                            <strong>«No tocar» se respeta siempre</strong>.
+                          </p>
+                          <p>
+                            Y por alta que sea la prioridad, ningún ingrediente pasa
+                            de su margen: como mucho ±{holgura}% de sus gramos de
+                            ahora, o el mínimo y el máximo que le hayas fijado tú.
+                          </p>
+                          <button
+                            className="enlace"
+                            onClick={() => setAyudaPrioridad(null)}
+                          >
+                            Entendido
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {componentes.map((c, i) => {
                     const cambio = porId.get(c.id);
                     const kcal100 = Number(c.ingredientes.kcal_100);
@@ -283,6 +394,26 @@ function EditorCompleto({
                       gramos,
                       equivalencias,
                     );
+
+                    // Los mismos números que usa el motor en `limites()`: si el
+                    // componente no trae mín/máx propios, el tope es el margen.
+                    const topePropio = c.min_g != null || c.max_g != null;
+                    const topeMin =
+                      c.min_g != null
+                        ? Number(c.min_g)
+                        : Math.max(0, gramos * (1 - holgura / 100));
+                    const topeMax =
+                      c.max_g != null
+                        ? Number(c.max_g)
+                        : gramos * (1 + holgura / 100);
+                    const topeAbajo =
+                      Boolean(cambio?.enLimite) &&
+                      Number(cambio?.gramosDespues) <= topeMin + 0.5;
+                    const topeValor = Math.round(topeAbajo ? topeMin : topeMax);
+                    const topeTitulo = topePropio
+                      ? `Se ha parado en el ${topeAbajo ? "mínimo" : "máximo"} que le fijaste tú: ${topeValor} g.`
+                      : `Se ha parado en ${topeValor} g. No tiene mínimo ni máximo propios, así que manda el margen por componente: con ±${holgura}% no puede alejarse más de eso de sus ${Math.round(gramos)} g. Súbelo en «Ajustar kcal» si quieres que se mueva más.`;
+
                     return (
                       <tr key={c.id}>
                         <td>
@@ -354,8 +485,12 @@ function EditorCompleto({
                                   </small>
                                 )}
                                 {cambio.enLimite && (
-                                  <span className="chip" style={{ marginLeft: 6 }}>
-                                    tope
+                                  <span
+                                    className="chip tope"
+                                    style={{ marginLeft: 6 }}
+                                    title={topeTitulo}
+                                  >
+                                    tope {topeValor} g
                                   </span>
                                 )}
                               </span>
@@ -640,6 +775,13 @@ function EditorCompleto({
                 value={fuerza}
                 onChange={(e) => setFuerza(Number(e.target.value))}
               />
+              <small>
+                Cuánto vale respetar el reparto de macros frente a no alejarse de la
+                dieta que ya tienes. Bajo, apenas mueve los gramos y el reparto queda
+                como salga; alto, se acerca al reparto que le pides aunque tenga que
+                cambiar mucho más. Solo cuenta con «Mantener el reparto de macros»
+                marcado.
+              </small>
             </label>
           )}
 
@@ -655,6 +797,13 @@ function EditorCompleto({
               value={holgura}
               onChange={(e) => setHolgura(Number(e.target.value))}
             />
+            <small>
+              Cuánto puede moverse cada ingrediente respecto a los gramos que tiene
+              ahora: con ±{holgura}%, uno de 100 g se queda entre {100 - holgura} y{" "}
+              {100 + holgura} g. <strong>Este es el tope</strong> de todos los que no
+              tengan un mínimo y un máximo propios. Estrecho, cambios pequeños y puede
+              que no se llegue al objetivo; ancho, más sitio para cuadrarlo.
+            </small>
           </label>
 
           <hr />
@@ -689,11 +838,24 @@ function EditorCompleto({
                   <b>{Math.round(resultado.pctFinal.grasa)}%</b>
                 </span>
               </div>
-              {resultado.avisos.map((a, i) => (
+              {avisosMotor.map((a, i) => (
                 <p key={i} className="aviso" style={{ margin: "10px 0 0", fontSize: 12.5 }}>
                   {a}
                 </p>
               ))}
+
+              {hayCambios && nTopes > 0 && (
+                <div className="nota-tope">
+                  <strong>
+                    {nTopes === 1
+                      ? "Un ingrediente se ha quedado en su tope"
+                      : `${nTopes} ingredientes se han quedado en su tope`}
+                  </strong>
+                  {frasesTope.map((f, i) => (
+                    <p key={i}>{f}</p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

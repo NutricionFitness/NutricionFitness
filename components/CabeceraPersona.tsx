@@ -61,7 +61,8 @@ export default function CabeceraPersona({
           {nDietas} {nDietas === 1 ? "dieta" : "dietas"}
         </span>
         <BotonPeligroso
-          etiqueta="borrar persona"
+          clase="enlace peligroso"
+          etiqueta="Eliminar persona"
           aviso={
             nDietas === 0
               ? "No tiene dietas: no se pierde nada más."
