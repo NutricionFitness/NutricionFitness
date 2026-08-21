@@ -61,7 +61,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <p className="sub" style={{ margin: 0 }}>
+      <p className="migas">
         <Link href={`/dietas/${id}`}>← {dieta.nombre}</Link>
       </p>
       <h1>Historial</h1>
@@ -77,6 +77,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+      <div className="listado tabla">
       <table>
         <thead>
           <tr>
@@ -97,7 +98,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
             const anterior = versiones[i - 1];
             const esActual = v.id === id;
             return (
-              <tr key={v.id} style={esActual ? { background: "color-mix(in srgb, var(--acento) 8%, transparent)" } : undefined}>
+              <tr key={v.id} style={esActual ? { background: "var(--acento-suave)" } : undefined}>
                 <td>
                   <Link href={`/dietas/${v.id}`}>
                     {"· ".repeat(Math.min(v.profundidad, 4))}
@@ -136,6 +137,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
           })}
         </tbody>
       </table>
+      </div>
 
       {versiones.length > 2 && (
         <p style={{ marginTop: 16 }}>
@@ -152,24 +154,26 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
             Se guardan a propósito: saber que se intentó y no se pudo es
             información, no un error que esconder.
           </p>
-          <table>
-            <thead>
-              <tr>
-                <th className="num">Objetivo</th>
-                <th>Motivo</th>
-                <th className="num">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fallidos.map((a, i) => (
-                <tr key={i}>
-                  <td className="num">{Math.round(Number(a.kcal_objetivo))} kcal</td>
-                  <td className="aviso">{a.motivo}</td>
-                  <td className="num suave">{fecha(a.creado_en as string)}</td>
+          <div className="listado tabla">
+            <table>
+              <thead>
+                <tr>
+                  <th className="num">Objetivo</th>
+                  <th>Motivo</th>
+                  <th className="num">Fecha</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {fallidos.map((a, i) => (
+                  <tr key={i}>
+                    <td className="num">{Math.round(Number(a.kcal_objetivo))} kcal</td>
+                    <td className="aviso">{a.motivo}</td>
+                    <td className="num tenue">{fecha(a.creado_en as string)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </>

@@ -65,29 +65,30 @@ export default function PanelSustitucion({
 
   return (
     <tr>
-      <td colSpan={9} style={{ background: "var(--panel)" }}>
-        <div className="fila" style={{ justifyContent: "space-between" }}>
+      <td colSpan={9} className="sustitucion">
+        <div className="fila">
           <strong>Cambiar {nombreActual}</strong>
-          <button className="enlace" onClick={onCerrar}>cerrar</button>
+          <span style={{ flex: 1 }} />
+          <button className="enlace" onClick={onCerrar}>
+            cerrar
+          </button>
         </div>
 
-        <div className="fila" style={{ margin: "8px 0", fontSize: 13 }}>
-          <label className="fila" style={{ gap: 6 }}>
+        <div className="fila" style={{ margin: "10px 0", fontSize: 13.5, gap: 18 }}>
+          <label className="opcion" style={{ fontSize: 13.5 }}>
             <input
               type="checkbox"
               checked={soloMismoGrupo}
               onChange={(e) => setSoloMismoGrupo(e.target.checked)}
-              style={{ width: 15 }}
             />
             Solo del mismo grupo
           </label>
           {objetivo && (
-            <label className="fila" style={{ gap: 6 }}>
+            <label className="opcion" style={{ fontSize: 13.5 }}>
               <input
                 type="checkbox"
                 checked={dirigido}
                 onChange={(e) => setDirigido(e.target.checked)}
-                style={{ width: 15 }}
               />
               Los que más acercan al reparto pedido
             </label>
@@ -103,7 +104,8 @@ export default function PanelSustitucion({
               : "No hay sustitutos razonables. Prueba a desmarcar «solo del mismo grupo»."}
           </p>
         ) : (
-          <table style={{ marginTop: 4 }}>
+          <div className="tabla">
+            <table style={{ marginTop: 4 }}>
             <thead>
               <tr>
                 <th>Sustituto</th>
@@ -144,10 +146,11 @@ export default function PanelSustitucion({
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
 
-        <p className="suave" style={{ fontSize: 12, margin: "8px 0 0" }}>
+        <p className="tenue" style={{ fontSize: 12, margin: "10px 0 0" }}>
           Las cantidades son las que aportan las mismas kilocalorías que{" "}
           {Math.round(gramos)} g de {nombreActual}, así que el total de la dieta no
           cambia: solo el reparto de macros.

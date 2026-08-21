@@ -28,7 +28,7 @@ export default function DietaVacia({ filas }: { filas: DietaCompleta }) {
 
   return (
     <div style={{ maxWidth: 620 }}>
-      <div className="tarjeta" style={{ marginBottom: 20 }}>
+      <div className="tarjeta" style={{ marginBottom: 18, background: "var(--acento-suave)", borderColor: "transparent" }}>
         <strong>Esta dieta aún está vacía.</strong>
         <p className="suave" style={{ margin: "6px 0 0" }}>
           Añade ingredientes a las comidas y aparecerán los totales y el panel de
@@ -40,16 +40,20 @@ export default function DietaVacia({ filas }: { filas: DietaCompleta }) {
         <p className="vacio">Esta dieta no tiene ni comidas. Algo fue mal al crearla.</p>
       ) : (
         comidas.map((comida) => (
-          <section key={comida.id} style={{ marginBottom: 18 }}>
-            <h2 style={{ margin: "0 0 2px" }}>{comida.nombre}</h2>
-            <BuscadorIngrediente
-              onElegir={(ingredienteId, gramos) => anadir(comida.id, ingredienteId, gramos)}
-            />
+          <section key={comida.id} className="comida">
+            <header>
+              <h2>{comida.nombre}</h2>
+            </header>
+            <footer style={{ borderTop: 0 }}>
+              <BuscadorIngrediente
+                onElegir={(ingredienteId, gramos) => anadir(comida.id, ingredienteId, gramos)}
+              />
+            </footer>
           </section>
         ))
       )}
 
-      {pendiente && <p className="suave">Añadiendo…</p>}
+      {pendiente && <p className="tenue">Añadiendo…</p>}
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default async function Personas() {
       <h1>Personas</h1>
       <p className="sub">Cada persona tiene sus dietas y el historial de sus ajustes.</p>
 
-      <form action={crearPersona} className="fila" style={{ marginBottom: 24 }}>
+      <form action={crearPersona} className="fila" style={{ marginBottom: 20 }}>
         <input name="nombre" placeholder="Nombre de la persona" required style={{ minWidth: 260 }} />
         <button className="principal">Añadir</button>
       </form>
@@ -27,6 +27,7 @@ export default async function Personas() {
       {!personas?.length ? (
         <p className="vacio">Todavía no hay ninguna persona.</p>
       ) : (
+        <div className="listado">
         <table>
           <thead>
             <tr>
@@ -47,6 +48,7 @@ export default async function Personas() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

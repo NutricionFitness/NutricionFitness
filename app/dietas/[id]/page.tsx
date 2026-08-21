@@ -62,7 +62,7 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <p className="sub" style={{ margin: 0 }}>
+      <p className="migas">
         {persona ? (
           <Link href={`/personas/${persona.id}`}>← {persona.nombre}</Link>
         ) : (

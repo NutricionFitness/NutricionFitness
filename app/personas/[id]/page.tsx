@@ -28,7 +28,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      <p className="sub" style={{ margin: 0 }}><Link href="/personas">← Personas</Link></p>
+      <p className="migas"><Link href="/personas">← Personas</Link></p>
       <CabeceraPersona
         persona={{
           id: persona.id as string,
@@ -38,7 +38,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
         nDietas={dietas?.length ?? 0}
       />
 
-      <form action={crearDieta} className="fila" style={{ marginBottom: 24 }}>
+      <form action={crearDieta} className="fila" style={{ margin: "20px 0" }}>
         <input type="hidden" name="persona_id" value={persona.id} />
         <input name="nombre" placeholder="Nombre de la dieta" required style={{ minWidth: 260 }} />
         <button className="principal">Nueva dieta</button>
@@ -47,6 +47,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
       {!dietas?.length ? (
         <p className="vacio">Aún no tiene ninguna dieta.</p>
       ) : (
+        <div className="listado tabla">
         <table>
           <thead>
             <tr>
@@ -91,6 +92,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
             })}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

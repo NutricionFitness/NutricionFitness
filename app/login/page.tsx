@@ -23,7 +23,7 @@ export default function Login() {
 
   if (olvidada)
     return (
-      <div style={{ maxWidth: 400, margin: "60px auto" }}>
+      <div style={{ maxWidth: 380, margin: "56px auto" }}>
         <h1>Recuperar la contraseña</h1>
         <p className="sub">Te mandamos un enlace para elegir una nueva.</p>
         <form action={accionOlvido} className="tarjeta rejilla">
@@ -51,7 +51,7 @@ export default function Login() {
     );
 
   return (
-    <div style={{ maxWidth: 400, margin: "60px auto" }}>
+    <div style={{ maxWidth: 380, margin: "56px auto" }}>
       <h1>Entrar</h1>
       <p className="sub">Con tu usuario y tu contraseña.</p>
 

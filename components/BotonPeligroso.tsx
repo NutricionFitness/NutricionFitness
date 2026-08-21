@@ -32,7 +32,16 @@ export default function BotonPeligroso({
 
   return (
     <span className="fila" style={{ gap: 8 }}>
-      <span className="aviso" style={{ fontSize: 13 }}>{aviso}</span>
+      <span
+        className="aviso"
+        style={{
+          background: "var(--aviso-suave)",
+          borderRadius: "var(--r-s)",
+          padding: "5px 10px",
+        }}
+      >
+        {aviso}
+      </span>
       <button
         className="peligro"
         disabled={pendiente}

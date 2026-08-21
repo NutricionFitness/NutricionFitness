@@ -61,7 +61,7 @@ export default async function Comparar({
 
   return (
     <>
-      <p className="sub" style={{ margin: 0 }}>
+      <p className="migas">
         <Link href={`/dietas/${b}/historial`}>← Historial</Link>
       </p>
       <h1>
@@ -74,7 +74,7 @@ export default async function Comparar({
       </p>
 
       {/* -------------------------------------------------- cabecera de totales */}
-      <div className="tarjeta" style={{ marginBottom: 24 }}>
+      <div className="tarjeta tabla" style={{ marginBottom: 24, padding: "4px 18px" }}>
         <table style={{ margin: 0 }}>
           <thead>
             <tr>
@@ -120,14 +120,15 @@ export default async function Comparar({
         c.grupos.map((g) => {
           const d = g.kcalB - g.kcalA;
           return (
-            <section key={g.comida}>
-              <h2>
-                {g.comida}{" "}
-                <span className="suave" style={{ fontWeight: 400, fontSize: 14 }}>
-                  {n0(g.kcalA)} → {n0(g.kcalB)} kcal{" "}
+            <section key={g.comida} className="comida">
+              <header>
+                <h2>{g.comida}</h2>
+                <span className="kcal-comida">
+                  {n0(g.kcalA)} → <em>{n0(g.kcalB)}</em> kcal{" "}
                   <span className={clase(d)}>({signo(d, n0)})</span>
                 </span>
-              </h2>
+              </header>
+              <div className="tabla">
               <table>
                 <thead>
                   <tr>
@@ -162,6 +163,7 @@ export default async function Comparar({
                   ))}
                 </tbody>
               </table>
+              </div>
             </section>
           );
         })

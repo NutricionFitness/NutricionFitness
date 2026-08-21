@@ -45,6 +45,7 @@ export default async function Ingredientes({
       {!data?.length ? (
         <p className="vacio">Sin resultados.</p>
       ) : (
+        <div className="listado tabla">
         <table>
           <thead>
             <tr>
@@ -73,6 +74,7 @@ export default async function Ingredientes({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

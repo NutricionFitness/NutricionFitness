@@ -44,7 +44,7 @@ export default async function Imprimir({
 
   return (
     <>
-      <p className="no-imprimir sub" style={{ margin: "0 0 16px" }}>
+      <p className="no-imprimir migas" style={{ margin: "0 0 16px" }}>
         <Link href={`/dietas/${id}`}>← Volver a la dieta</Link>
       </p>
       <HojaDieta dieta={data as unknown as DietaCompleta} persona={persona} />

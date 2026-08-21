@@ -91,8 +91,8 @@ export default function BuscadorIngrediente({
     const medida = medidas.find((m) => m.id === unidad);
     const gramos = medida ? cantidad * Number(medida.gramos) : cantidad;
     return (
-      <div className="fila" style={{ marginTop: 8 }}>
-        <strong>{elegido.nombre}</strong>
+      <div className="buscador">
+        <strong style={{ fontSize: 14 }}>{elegido.nombre}</strong>
         <input
           type="number"
           min={0}
@@ -115,7 +115,11 @@ export default function BuscadorIngrediente({
         ) : (
           <span className="suave">g</span>
         )}
-        {medida && <span className="suave">= {Math.round(gramos)} g</span>}
+        {medida && (
+          <span className="tenue cifra" style={{ fontSize: 13 }}>
+            = {Math.round(gramos)} g
+          </span>
+        )}
         <button className="principal" onClick={confirmar}>
           Añadir
         </button>
@@ -126,7 +130,7 @@ export default function BuscadorIngrediente({
 
   // ---------------------------------------------- paso 1: cuál
   return (
-    <div className="fila" style={{ position: "relative", marginTop: 8 }}>
+    <div className="buscador">
       <input
         value={texto}
         autoFocus={autoFocus}
@@ -134,33 +138,22 @@ export default function BuscadorIngrediente({
         onChange={(e) => setTexto(e.target.value)}
         onFocus={() => opciones.length && setAbierto(true)}
         onBlur={() => setTimeout(() => setAbierto(false), 150)}
-        style={{ minWidth: 280 }}
+        style={{ minWidth: 260, flex: "1 1 260px", maxWidth: 420 }}
       />
-      {buscando && <span className="suave" style={{ fontSize: 12 }}>buscando…</span>}
+      {buscando && <span className="tenue" style={{ fontSize: 12 }}>buscando…</span>}
 
       {abierto && opciones.length > 0 && (
-        <ul
-          className="tarjeta"
-          style={{
-            position: "absolute", top: "100%", left: 0, zIndex: 20, margin: "4px 0 0",
-            padding: 4, listStyle: "none", minWidth: 420, maxHeight: 320,
-            overflowY: "auto", boxShadow: "0 8px 24px rgba(0,0,0,.10)",
-          }}
-        >
+        <ul className="sugerencias">
           {opciones.map((o) => {
             const medida = medidaPorDefecto(o.medidas_caseras);
             return (
               <li key={o.id}>
                 <button
-                  style={{
-                    width: "100%", textAlign: "left", border: "none",
-                    background: "none", padding: "7px 9px", borderRadius: 6,
-                  }}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => elegir(o)}
                 >
                   {o.nombre}
-                  <small className="suave">
+                  <small className="tenue">
                     {" · "}
                     {Math.round(Number(o.kcal_100))} kcal/100 g
                     {o.estado !== "desconocido" ? ` · ${o.estado}` : ""}

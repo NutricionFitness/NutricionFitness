@@ -1,70 +1,1103 @@
+/* ===========================================================================
+   Sistema visual de la app.
+
+   Base neutra con una sola nota de color: un verde profundo reservado para lo
+   que se pulsa y para el foco del teclado. Los avisos van en ámbar, que no
+   compite con él, y los borrados en rojo, que solo aparece cuando toca.
+
+   Tres estados de tema, no dos: si el usuario elige, queda sellado en
+   `data-tema` y manda; si no elige, decide `prefers-color-scheme`. Por eso
+   ningún color se declara solo dentro de una consulta de medios: los tokens se
+   redefinen y los componentes siempre leen tokens.
+
+   Las cifras van en IBM Plex Mono con `tabular-nums`: gramos y kilocalorías se
+   suman en columna, y con anchos iguales se comparan de un vistazo. Los tres
+   colores de macronutrientes son los mismos que los de la hoja impresa, para
+   que la pantalla y el PDF que recibe el cliente digan lo mismo.
+   =========================================================================== */
+
 :root {
-  --fondo: #fbfaf8;
-  --tinta: #23201d;
-  --suave: #6b6660;
-  --linea: #e5e0d8;
-  --acento: #7a5c3e;
-  --aviso: #8a5a2b;
-  --bien: #3f6b4a;
-  --panel: #fff;
+  /* --- superficies y tinta --- */
+  --fondo: #f6f7f4;
+  --panel: #ffffff;
+  --panel-2: #f0f2ee;
+  --linea: #e1e5de;
+  --linea-fuerte: #cbd2c7;
+  --tinta: #161a17;
+  --suave: #4c574f;
+  --tenue: #7c8a81;
+
+  /* --- color con intención --- */
+  --acento: #1e7a4d;
+  --acento-hover: #1a6942;
+  --acento-tinta: #ffffff;
+  --acento-suave: #e4f0e8;
+  --aviso: #a9610f;
+  --aviso-suave: #fbf0e1;
+  --bien: #1e7a4d;
+  --peligro: #a3312c;
+  --peligro-hover: #8d2925;
+
+  /* --- macronutrientes: misma paleta que la hoja impresa --- */
+  --m-prot: #2a78d6;
+  --m-hc: #eb6834;
+  --m-grasa: #1baf7a;
+
+  /* --- forma --- */
+  --r-s: 6px;
+  --r-m: 10px;
+  --r-l: 14px;
+  --sombra-1: 0 1px 2px rgba(20, 30, 22, 0.06);
+  --sombra-2: 0 2px 4px rgba(20, 30, 22, 0.05), 0 12px 32px -14px rgba(20, 30, 22, 0.28);
+  --sombra-3: 0 24px 60px -30px rgba(12, 20, 14, 0.55);
+
+  --texto: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cifras: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+
   color-scheme: light;
 }
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --fondo: #17151300; --tinta: #ece7e0; --suave: #a49d94; --linea: #34302b;
-    --acento: #c9a97e; --aviso: #d3a26a; --bien: #8fbf9c; --panel: #201d1a;
+  :root:not([data-tema="claro"]) {
+    --fondo: #0f1210;
+    --panel: #161a17;
+    --panel-2: #1c211d;
+    --linea: #272d28;
+    --linea-fuerte: #39423b;
+    --tinta: #e9eee9;
+    --suave: #a6b2a9;
+    --tenue: #79857c;
+
+    --acento: #4ca97a;
+    --acento-hover: #5cb98a;
+    --acento-tinta: #08120c;
+    --acento-suave: #18291f;
+    --aviso: #d19a4e;
+    --aviso-suave: #2a2115;
+    --bien: #4ca97a;
+    --peligro: #d97066;
+    --peligro-hover: #e58479;
+
+    --m-prot: #5b9ad1;
+    --m-hc: #ef8a5e;
+    --m-grasa: #3fc79a;
+
+    --sombra-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --sombra-2: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px -14px rgba(0, 0, 0, 0.8);
+    --sombra-3: 0 24px 60px -30px rgba(0, 0, 0, 0.9);
+
     color-scheme: dark;
   }
-  body { background: #171513; }
 }
-* { box-sizing: border-box; }
+
+:root[data-tema="oscuro"] {
+  --fondo: #0f1210;
+  --panel: #161a17;
+  --panel-2: #1c211d;
+  --linea: #272d28;
+  --linea-fuerte: #39423b;
+  --tinta: #e9eee9;
+  --suave: #a6b2a9;
+  --tenue: #79857c;
+
+  --acento: #4ca97a;
+  --acento-hover: #5cb98a;
+  --acento-tinta: #08120c;
+  --acento-suave: #18291f;
+  --aviso: #d19a4e;
+  --aviso-suave: #2a2115;
+  --bien: #4ca97a;
+  --peligro: #d97066;
+  --peligro-hover: #e58479;
+
+  --m-prot: #5b9ad1;
+  --m-hc: #ef8a5e;
+  --m-grasa: #3fc79a;
+
+  --sombra-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sombra-2: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px -14px rgba(0, 0, 0, 0.8);
+  --sombra-3: 0 24px 60px -30px rgba(0, 0, 0, 0.9);
+
+  color-scheme: dark;
+}
+
+/* =========================================================== base ======== */
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  margin: 0; background: var(--fondo); color: var(--tinta);
-  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--texto);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-a { color: var(--acento); }
-main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 64px; }
+
+a {
+  color: var(--acento);
+  text-decoration-color: color-mix(in srgb, var(--acento) 35%, transparent);
+  text-underline-offset: 2px;
+}
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 26px 20px 96px;
+}
+@media (max-width: 640px) {
+  main {
+    padding: 18px 14px 88px;
+  }
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+h1 {
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 650;
+  margin: 2px 0 2px;
+}
+h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 28px 0 10px;
+}
+p.sub {
+  color: var(--suave);
+  margin: 0 0 22px;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--linea);
+  margin: 0;
+}
+
+/* ==================================================== barra superior ===== */
+
 header.barra {
-  border-bottom: 1px solid var(--linea); background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--linea);
 }
-header.barra div {
-  max-width: 1080px; margin: 0 auto; padding: 12px 20px;
-  display: flex; align-items: center; gap: 16px;
+header.barra > div {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
-header.barra strong { font-weight: 650; letter-spacing: -0.01em; }
-header.barra nav { display: flex; gap: 14px; margin-left: auto; font-size: 14px; }
-h1 { font-size: 22px; letter-spacing: -0.02em; margin: 4px 0 2px; }
-h2 { font-size: 16px; margin: 24px 0 8px; }
-p.sub { color: var(--suave); margin: 0 0 20px; }
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { padding: 7px 10px; border-bottom: 1px solid var(--linea); text-align: left; }
-th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); font-weight: 600; }
-td.num, th.num { text-align: right; }
-tr.total td { font-weight: 650; border-top: 2px solid var(--linea); border-bottom: none; }
-input, select, button, textarea {
-  font: inherit; color: inherit; background: var(--panel);
-  border: 1px solid var(--linea); border-radius: 7px; padding: 7px 10px;
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--tinta);
+  text-decoration: none;
+  white-space: nowrap;
 }
-input[type="range"] { padding: 0; border: none; background: none; width: 100%; }
-button { cursor: pointer; }
-button.principal { background: var(--acento); color: #fff; border-color: transparent; font-weight: 600; }
-button.principal:disabled { opacity: .5; cursor: default; }
-.tarjeta { background: var(--panel); border: 1px solid var(--linea); border-radius: 12px; padding: 16px 18px; }
-.rejilla { display: grid; gap: 14px; }
-.fila { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.chip { font-size: 12px; color: var(--suave); border: 1px solid var(--linea); border-radius: 999px; padding: 2px 9px; }
-.aviso { color: var(--aviso); font-size: 13px; }
-.suave { color: var(--suave); }
-.mas { color: var(--bien); }
-.menos { color: var(--aviso); }
-.vacio { color: var(--suave); padding: 28px 0; }
+.marca svg {
+  width: 21px;
+  height: 21px;
+  flex: none;
+  color: var(--acento);
+}
+header.barra nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 14px;
+}
+header.barra nav a {
+  color: var(--suave);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--r-s);
+}
+header.barra nav a:hover {
+  color: var(--tinta);
+  background: var(--panel-2);
+}
+header.barra nav form {
+  display: flex;
+}
+@media (max-width: 640px) {
+  header.barra > div {
+    padding: 9px 14px;
+    gap: 10px;
+  }
+  header.barra nav {
+    gap: 0;
+    font-size: 13.5px;
+  }
+  header.barra nav a {
+    padding: 6px 8px;
+  }
+  .marca {
+    font-size: 14.5px;
+    gap: 7px;
+  }
+  .barra-correo {
+    display: none;
+  }
+}
+/* En el móvil estrecho el nombre estorba: la hoja verde ya lleva a la portada
+   y lo que hace falta es que quepan Personas, Ingredientes y Salir. */
+@media (max-width: 480px) {
+  .marca-nombre {
+    display: none;
+  }
+  header.barra nav a {
+    padding: 6px 7px;
+  }
+}
+
+/* ======================================================== migas ========== */
+
+.migas {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--tenue);
+  margin: 0 0 10px;
+}
+.migas a {
+  color: var(--tenue);
+  text-decoration: none;
+}
+.migas a:hover {
+  color: var(--tinta);
+  text-decoration: underline;
+}
+
+/* ======================================================= controles ======= */
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--r-s);
+  padding: 8px 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: color-mix(in srgb, var(--linea-fuerte) 60%, var(--tinta));
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+input[type="number"] {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+}
+input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  accent-color: var(--acento);
+  border-radius: 4px;
+}
+select {
+  cursor: pointer;
+  padding-right: 26px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 12px center, right 7px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+label {
+  display: block;
+}
+
+input[type="range"] {
+  padding: 0;
+  border: none;
+  background: none;
+  width: 100%;
+  accent-color: var(--acento);
+  height: 22px;
+}
+input[type="range"]:focus {
+  box-shadow: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--panel);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--r-s);
+  padding: 8px 12px;
+  line-height: 1.2;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+button:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: color-mix(in srgb, var(--linea-fuerte) 55%, var(--tinta));
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.principal {
+  background: var(--acento);
+  color: var(--acento-tinta);
+  border-color: transparent;
+  font-weight: 600;
+}
+button.principal:hover:not(:disabled) {
+  background: var(--acento-hover);
+  border-color: transparent;
+}
 
 button.enlace {
-  border: none; background: none; padding: 0;
-  color: var(--acento); cursor: pointer; font: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--acento);
+  font: inherit;
+  text-underline-offset: 2px;
+}
+button.enlace:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
 }
 
 button.peligro {
-  background: #8c2f2f; color: #fff; border-color: transparent; font-weight: 600;
+  background: var(--peligro);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
 }
-button.peligro:disabled { opacity: .6; cursor: default; }
+button.peligro:hover:not(:disabled) {
+  background: var(--peligro-hover);
+  border-color: transparent;
+}
+
+/* Botón de icono: subir, bajar, sustituir, quitar. */
+button.icono {
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--suave);
+  background: transparent;
+  border-color: transparent;
+}
+button.icono:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: var(--linea);
+  color: var(--tinta);
+}
+button.icono.quitar:hover:not(:disabled) {
+  color: var(--peligro);
+  border-color: color-mix(in srgb, var(--peligro) 35%, transparent);
+}
+
+/* ========================================================== piezas ======= */
+
+.tarjeta {
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  padding: 16px 18px;
+  box-shadow: var(--sombra-1);
+}
+.rejilla {
+  display: grid;
+  gap: 14px;
+}
+.fila {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--suave);
+  background: var(--panel-2);
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  padding: 1px 9px;
+  white-space: nowrap;
+}
+.chip.mas {
+  color: var(--bien);
+  background: var(--acento-suave);
+  border-color: transparent;
+}
+.chip.menos {
+  color: var(--aviso);
+  background: var(--aviso-suave);
+  border-color: transparent;
+}
+
+.etiqueta {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tenue);
+}
+
+.aviso {
+  color: var(--aviso);
+  font-size: 13.5px;
+}
+.suave {
+  color: var(--suave);
+}
+.tenue {
+  color: var(--tenue);
+}
+.mas {
+  color: var(--bien);
+}
+.menos {
+  color: var(--aviso);
+}
+.vacio {
+  color: var(--tenue);
+  padding: 30px 0;
+}
+
+.aviso-caja {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--aviso-suave);
+  color: var(--aviso);
+  border-radius: var(--r-m);
+  padding: 11px 14px;
+  font-size: 13.5px;
+  margin: 0 0 12px;
+}
+
+/* ========================================================== tablas ======= */
+
+.tabla {
+  overflow-x: auto;
+  border-radius: var(--r-m);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--linea);
+  text-align: left;
+  vertical-align: middle;
+}
+th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--tenue);
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom-color: var(--linea-fuerte);
+}
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+td.num {
+  font-family: var(--cifras);
+  font-size: 13.5px;
+}
+tbody tr:hover td {
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+}
+tr.total td {
+  font-weight: 650;
+  border-top: 2px solid var(--linea-fuerte);
+  border-bottom: none;
+}
+
+/* Una tabla dentro de una tarjeta ya tiene el marco de la tarjeta. */
+.tarjeta > table tr:last-child td,
+.tarjeta > .tabla > table tr:last-child td {
+  border-bottom: none;
+}
+
+/* La tabla como lista de tarjetas: listados sueltos sobre el fondo. */
+.listado {
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  box-shadow: var(--sombra-1);
+  overflow: hidden;
+}
+.listado table {
+  margin: 0;
+}
+.listado th {
+  background: var(--panel-2);
+}
+.listado tr:last-child td {
+  border-bottom: none;
+}
+/* Un listado que además tiene que deslizarse: la esquina redondeada la pone
+   `overflow`, pero aquí manda poder llegar a la última columna. */
+.listado.tabla {
+  overflow: auto;
+}
+
+/* ==================================================== cifras grandes ===== */
+
+.cifra {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.cifra-xl {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+.cifra-xl small {
+  font-family: var(--texto);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--tenue);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+.pastilla {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--linea);
+  font-size: 13px;
+  color: var(--suave);
+  white-space: nowrap;
+}
+.pastilla b {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--tinta);
+}
+.pastilla.avisa {
+  background: var(--aviso-suave);
+  border-color: transparent;
+  color: var(--aviso);
+}
+.pastilla.avisa b {
+  color: var(--aviso);
+}
+
+/* ============================================== reparto de macros ======== */
+
+.macro-barra {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  border-radius: var(--r-s);
+  overflow: hidden;
+}
+.macro-barra > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+.macro-barra .prot {
+  background: var(--m-prot);
+}
+.macro-barra .hc {
+  background: var(--m-hc);
+}
+.macro-barra .grasa {
+  background: var(--m-grasa);
+}
+.macro-barra b {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+/* En oscuro los tres tonos se aclaran para sostenerse sobre el fondo, y
+   entonces la etiqueta se lee mejor en negro que en blanco. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .macro-barra > span {
+    color: #0f1210;
+  }
+}
+:root[data-tema="oscuro"] .macro-barra > span {
+  color: #0f1210;
+}
+.macro-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--suave);
+  margin-top: 6px;
+}
+.macro-leyenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.macro-leyenda i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: block;
+}
+
+/* =============================================== barra de la dieta ======= */
+
+.barra-dieta {
+  position: sticky;
+  top: 60px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  box-shadow: var(--sombra-1);
+}
+.barra-dieta .separa {
+  flex: 1;
+}
+.barra-dieta .kcal-vivo {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.barra-dieta .kcal-vivo strong {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.barra-dieta .kcal-vivo span {
+  font-size: 13px;
+  color: var(--tenue);
+}
+.barra-dieta .mini-macros {
+  display: flex;
+  gap: 2px;
+  width: 108px;
+  height: 8px;
+  border-radius: 99px;
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  .barra-dieta {
+    top: 58px;
+    gap: 9px;
+    padding: 9px 11px;
+  }
+  .barra-dieta .mini-macros {
+    display: none;
+  }
+}
+
+/* ========================================================== comidas ====== */
+
+.comida {
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  box-shadow: var(--sombra-1);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.comida > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--linea);
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+}
+.comida > header h2 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.comida > header .kcal-comida {
+  margin-left: auto;
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--tenue);
+}
+.comida > header .kcal-comida em {
+  font-style: normal;
+  color: var(--tinta);
+}
+.comida .tabla {
+  border-radius: 0;
+}
+.comida table th:first-child,
+.comida table td:first-child {
+  padding-left: 16px;
+}
+.comida table th:last-child,
+.comida table td:last-child {
+  padding-right: 12px;
+}
+.comida > footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--linea);
+}
+.comida .acciones {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
+.medida {
+  font-size: 11.5px;
+  color: var(--tenue);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* ======================================================= el cajón ======== */
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(12, 20, 14, 0.32);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.28s ease, visibility 0.28s;
+}
+.velo.abierto {
+  opacity: 1;
+  visibility: visible;
+}
+
+.cajon {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 362px;
+  max-width: 92vw;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--linea);
+  box-shadow: var(--sombra-3);
+  transform: translateX(101%);
+  visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), visibility 0.28s;
+}
+.cajon.abierto {
+  transform: none;
+  visibility: visible;
+}
+.cajon > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--linea);
+}
+.cajon > header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.cajon .cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.cajon > footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--linea);
+  display: grid;
+  gap: 8px;
+  background: var(--panel);
+}
+.cajon .cerrar {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--suave);
+  border-color: var(--linea);
+}
+
+@media (max-width: 680px) {
+  .cajon {
+    top: auto;
+    left: 0;
+    width: auto;
+    max-width: none;
+    max-height: 88vh;
+    border-left: 0;
+    border-top: 1px solid var(--linea);
+    border-radius: var(--r-l) var(--r-l) 0 0;
+    transform: translateY(101%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cajon,
+  .velo {
+    transition: none;
+  }
+}
+
+/* ============================================ tablas en pantalla pequeña ==
+   Encoger una tabla de ocho columnas hasta que quepa no la hace legible: la
+   parte en tres líneas por celda. Se le pone un ancho mínimo, se desliza a lo
+   ancho dentro de su caja —nunca la página entera— y la columna del alimento
+   se queda pegada a la izquierda, que es la que dice de qué fila hablamos.  */
+
+@media (max-width: 760px) {
+  .comida table {
+    min-width: 640px;
+  }
+  .listado table {
+    min-width: 620px;
+  }
+  .comida table th:first-child,
+  .comida table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--panel);
+    box-shadow: 1px 0 0 var(--linea);
+    min-width: 196px;
+    max-width: 210px;
+  }
+  /* La fila de sustitución ocupa todo el ancho: no se pega a nada. */
+  .comida table td.sustitucion {
+    position: static;
+    max-width: none;
+    box-shadow: none;
+    background: var(--panel-2);
+  }
+  .sustitucion table {
+    min-width: 520px;
+  }
+}
+
+/* ==================================================== campos del cajón === */
+
+.campo {
+  display: grid;
+  gap: 7px;
+}
+.campo > .etiqueta {
+  display: block;
+}
+.campo .pie {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--tenue);
+  font-variant-numeric: tabular-nums;
+}
+.campo select {
+  width: 100%;
+}
+.campo small {
+  color: var(--tenue);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.opcion input[type="checkbox"] {
+  flex: none;
+}
+
+.medidor {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.medidor .valor {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.medidor .delta {
+  font-family: var(--cifras);
+  font-size: 13px;
+}
+
+/* ================================================= panel sustitución ===== */
+
+.sustitucion {
+  background: var(--panel-2);
+  padding: 14px 16px;
+}
+.sustitucion > .fila:first-child {
+  justify-content: space-between;
+}
+.sustitucion table {
+  background: var(--panel);
+  border-radius: var(--r-s);
+}
+.sustitucion table th {
+  background: transparent;
+}
+
+/* ======================================================== buscador ======= */
+
+.buscador {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sugerencias {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 25;
+  margin: 5px 0 0;
+  padding: 5px;
+  list-style: none;
+  min-width: min(440px, 92vw);
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  box-shadow: var(--sombra-2);
+}
+.sugerencias button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 8px 10px;
+  border-radius: var(--r-s);
+  line-height: 1.4;
+}
+.sugerencias button:hover {
+  background: var(--acento-suave);
+  color: var(--tinta);
+}
+
+/* ==================================================== interruptor tema === */
+
+.tema {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--suave);
+}
+.tema:hover {
+  background: var(--panel-2);
+  border-color: var(--linea);
+  color: var(--tinta);
+}
+
+/* ===================================================== impresión ========= */
+
+@media print {
+  header.barra,
+  .no-imprimir,
+  .velo,
+  .cajon,
+  .barra-dieta {
+    display: none !important;
+  }
+  main {
+    padding: 0;
+    max-width: none;
+  }
+}

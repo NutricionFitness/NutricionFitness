@@ -69,19 +69,23 @@ export default function CabeceraDieta({
       ) : (
         <h1 style={{ marginBottom: 2 }}>
           {dieta.nombre}{" "}
-          <button className="enlace" style={{ fontSize: 14 }} onClick={() => setEditando(true)}>
+          <button
+            className="enlace"
+            style={{ fontSize: 13.5, fontWeight: 400 }}
+            onClick={() => setEditando(true)}
+          >
             renombrar
           </button>
         </h1>
       )}
 
-      <div className="fila sub" style={{ gap: 14 }}>
-        <span>
+      <div className="fila sub" style={{ gap: 12, marginTop: 8 }}>
+        <span className="chip">
           Versión {dieta.version}
-          {dieta.dieta_padre_id ? " · procede de un ajuste" : ""}
+          {dieta.dieta_padre_id ? " · de un ajuste" : ""}
         </span>
 
-        <span className="fila" style={{ gap: 6 }}>
+        <span className="fila" style={{ gap: 6, fontSize: 13.5 }}>
           Cantidades
           <select
             value={dieta.estado_cantidades}
@@ -100,15 +104,18 @@ export default function CabeceraDieta({
           </select>
         </span>
 
-        <Link href={`/dietas/${dieta.id}/imprimir`}>imprimir o PDF</Link>
+        <span className="fila" style={{ gap: 12, fontSize: 13.5 }}>
+          <Link href={`/dietas/${dieta.id}/historial`}>historial</Link>
+          <Link href={`/dietas/${dieta.id}/imprimir`}>imprimir o PDF</Link>
 
-        <button
-          className="enlace"
-          disabled={pendiente}
-          onClick={() => iniciar(() => duplicarDieta(dieta.id))}
-        >
-          duplicar
-        </button>
+          <button
+            className="enlace"
+            disabled={pendiente}
+            onClick={() => iniciar(() => duplicarDieta(dieta.id))}
+          >
+            duplicar
+          </button>
+        </span>
 
         <BotonPeligroso
           etiqueta="borrar"

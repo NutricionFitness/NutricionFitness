@@ -41,13 +41,23 @@ export default function AnadirComida({
 
   if (!abierto)
     return (
-      <button className="enlace" style={{ marginTop: 16 }} onClick={() => setAbierto(true)}>
-        + añadir una comida
+      <button
+        onClick={() => setAbierto(true)}
+        style={{
+          marginTop: 4,
+          width: "100%",
+          borderStyle: "dashed",
+          background: "transparent",
+          color: "var(--suave)",
+          padding: "12px",
+        }}
+      >
+        + Añadir una comida
       </button>
     );
 
   return (
-    <div className="fila" style={{ marginTop: 16 }}>
+    <div className="fila tarjeta" style={{ marginTop: 4 }}>
       <input
         value={nombre}
         autoFocus

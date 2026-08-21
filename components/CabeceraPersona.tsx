@@ -46,14 +46,20 @@ export default function CabeceraPersona({
       ) : (
         <h1 style={{ marginBottom: 2 }}>
           {persona.nombre}{" "}
-          <button className="enlace" style={{ fontSize: 14 }} onClick={() => setEditando(true)}>
+          <button
+            className="enlace"
+            style={{ fontSize: 13.5, fontWeight: 400 }}
+            onClick={() => setEditando(true)}
+          >
             renombrar
           </button>
         </h1>
       )}
 
-      <div className="fila sub" style={{ gap: 14 }}>
-        <span>{nDietas} {nDietas === 1 ? "dieta" : "dietas"}</span>
+      <div className="fila sub" style={{ gap: 12, marginTop: 8 }}>
+        <span className="chip">
+          {nDietas} {nDietas === 1 ? "dieta" : "dietas"}
+        </span>
         <BotonPeligroso
           etiqueta="borrar persona"
           aviso={
