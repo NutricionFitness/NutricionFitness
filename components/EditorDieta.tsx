@@ -9,9 +9,10 @@ import {
   anadirComponente,
   aplicarAjuste,
   borrarComponente,
-  convertirComponente,
+  cambiarIngrediente,
 } from "@/app/dietas/[id]/acciones";
 import BuscadorIngrediente from "./BuscadorIngrediente";
+import PanelSustitucion from "./PanelSustitucion";
 import DietaVacia from "./DietaVacia";
 import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
 import {
@@ -56,6 +57,7 @@ function EditorCompleto({
   const [conMacros, setConMacros] = useState(false);
   const [fuerza, setFuerza] = useState(60);
   const [holgura, setHolgura] = useState(40);
+  const [sustituyendo, setSustituyendo] = useState<string | null>(null);
 
   const opciones = useMemo(
     () => ({
@@ -110,6 +112,16 @@ function EditorCompleto({
   // La dieta declara si sus cantidades van en crudo o en cocido. Si además
   // contiene alimentos del estado contrario, los gramos no significan lo mismo
   // en todas las filas y conviene decirlo antes de que cuadre un número falso.
+  // Para el modo dirigido del panel de sustitución: si se está pidiendo un
+  // reparto de macros, se le pasa para que proponga los cambios que acercan.
+  const objetivoSustitucion = conMacros
+    ? {
+        macrosDieta: resultado.macrosInicial,
+        energiaDieta: resultado.energiaInicial,
+        objetivoPct: opciones.macrosObjetivo ?? {},
+      }
+    : undefined;
+
   const desajustes = estadosIncoherentes(
     filas.estado_cantidades,
     comidas.flatMap((m) => (m.componentes ?? []).map((c) => c.ingredientes.estado)),
@@ -201,7 +213,7 @@ function EditorCompleto({
                               title={`Factor ${conversion.factor.toFixed(2)} deducido del agua que declara BEDCA`}
                               onClick={() =>
                                 iniciar(() =>
-                                  convertirComponente(
+                                  cambiarIngrediente(
                                     c.id,
                                     conversion.ingredienteDestino,
                                     conversion.gramosDestino,
@@ -281,6 +293,14 @@ function EditorCompleto({
                         </td>
                         <td className="num">
                           <button
+                            title="Cambiar por otro alimento"
+                            onClick={() =>
+                              setSustituyendo(sustituyendo === c.id ? null : c.id)
+                            }
+                          >
+                            ⇄
+                          </button>
+                          <button
                             title="Quitar"
                             onClick={() =>
                               iniciar(() =>
@@ -294,6 +314,25 @@ function EditorCompleto({
                       </tr>
                     );
                   })}
+                  {componentes
+                    .filter((c) => c.id === sustituyendo)
+                    .map((c) => (
+                      <PanelSustitucion
+                        key={`sust-${c.id}`}
+                        componenteId={c.id}
+                        ingredienteId={c.ingrediente_id}
+                        nombreActual={c.ingredientes.nombre}
+                        grupo={c.ingredientes.grupo}
+                        gramos={Number(c.gramos)}
+                        dietaId={filas.id}
+                        objetivo={objetivoSustitucion}
+                        onCerrar={() => setSustituyendo(null)}
+                        onHecho={() => {
+                          setSustituyendo(null);
+                          router.refresh();
+                        }}
+                      />
+                    ))}
                 </tbody>
               </table>
               <BuscadorIngrediente

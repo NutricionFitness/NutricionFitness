@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  rankearHaciaObjetivo,
+  rankearSustitutos,
+  type Candidato,
+  type Macros,
+  type Sustitucion,
+} from "@/lib/dominio/sustituir";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export async function actualizarComponente(
@@ -67,12 +74,14 @@ export async function aplicarAjuste(datos: {
 }
 
 /**
- * Cambia un componente entre su versión cruda y su cocida, aplicando el factor
- * de rendimiento. Los gramos los calcula el cliente con la misma función que
- * usa para enseñar la vista previa, así que lo que se guarda es exactamente lo
- * que el usuario vio antes de pulsar.
+ * Cambia el ingrediente de un componente y sus gramos.
+ *
+ * Vale para las dos cosas que hacen eso: pasar de crudo a cocido aplicando el
+ * factor de rendimiento, y sustituir un alimento por otro. En ambos casos los
+ * gramos los calcula el cliente con la misma función que usó para enseñar la
+ * vista previa, así que lo que se guarda es exactamente lo que se vio.
  */
-export async function convertirComponente(
+export async function cambiarIngrediente(
   id: string,
   ingredienteDestino: number,
   gramosDestino: number,
@@ -105,4 +114,65 @@ export async function crearMedida(
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/dietas/${dietaId}`);
+}
+
+/**
+ * Busca sustitutos para un componente.
+ *
+ * La puntuación necesita todo el catálogo de candidatos, así que se hace en el
+ * servidor: mandar mil ingredientes al navegador para elegir ocho sería tirar
+ * ancho de banda. El cálculo en sí es la misma librería que se prueba aparte.
+ */
+export async function buscarSustitutos(datos: {
+  ingredienteId: number;
+  gramos: number;
+  grupo: string | null;
+  soloMismoGrupo: boolean;
+  /** Si vienen, se buscan los cambios que más acercan al reparto pedido. */
+  macrosDieta?: Macros;
+  energiaDieta?: number;
+  objetivoPct?: Partial<Macros>;
+}): Promise<Sustitucion[]> {
+  const supabase = await clienteServidor();
+
+  const { data: actual, error: errorActual } = await supabase
+    .from("ingredientes")
+    .select("id, nombre, grupo, estado, prot_100, hc_100, grasa_100, kcal_100")
+    .eq("id", datos.ingredienteId)
+    .single();
+  if (errorActual || !actual) return [];
+
+  let consulta = supabase
+    .from("ingredientes")
+    .select("id, nombre, grupo, estado, prot_100, hc_100, grasa_100, kcal_100")
+    .eq("preferente", true)
+    .gt("kcal_100", 0)
+    .neq("id", datos.ingredienteId)
+    .limit(1200);
+  if (datos.soloMismoGrupo && datos.grupo) consulta = consulta.eq("grupo", datos.grupo);
+
+  const { data: filas, error } = await consulta;
+  if (error || !filas) return [];
+
+  const aCandidato = (f: (typeof filas)[number]): Candidato => ({
+    id: f.id as number,
+    nombre: f.nombre as string,
+    grupo: f.grupo as string | null,
+    estado: (f.estado as string) ?? "desconocido",
+    prot: Number(f.prot_100),
+    hc: Number(f.hc_100),
+    grasa: Number(f.grasa_100),
+    kcal100: Number(f.kcal_100),
+  });
+
+  const yo = aCandidato(actual as never);
+  const candidatos = filas.map(aCandidato);
+
+  if (datos.objetivoPct && datos.macrosDieta && datos.energiaDieta) {
+    return rankearHaciaObjetivo(
+      yo, datos.gramos, candidatos,
+      datos.macrosDieta, datos.energiaDieta, datos.objetivoPct,
+    );
+  }
+  return rankearSustitutos(yo, datos.gramos, candidatos);
 }

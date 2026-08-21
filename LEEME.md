@@ -128,13 +128,14 @@ scripts/cargar-ingredientes.mjs
 scripts/cargar-medidas.mjs
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor, comparador y medidas  (45 tests)
+  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución  (76 tests)
   supabase/       clientes de navegador y servidor
 app/
   login, cuenta, personas, personas/[id], dietas/[id],
   dietas/[id]/historial, comparar, ingredientes
 components/
   EditorDieta.tsx          la pantalla de trabajo
+  PanelSustitucion.tsx     cambiar un alimento por otro
   DietaVacia.tsx           una dieta recién creada, antes del primer ingrediente
   BuscadorIngrediente.tsx
   FormularioContrasena.tsx
@@ -244,6 +245,38 @@ cubre a todos es **el aviso**: si la dieta dice llevar las cantidades en crudo y
 contiene ingredientes marcados como cocidos, se dice, porque ahí los gramos no
 significan lo mismo en unas filas que en otras.
 
+### Sustituir es isoenergético, y por eso funciona
+
+Cambiar A por B **en la cantidad que aporta las mismas kilocalorías**. El total
+de la dieta no se mueve, así que lo único que cambia es el reparto de macros,
+que es justo lo que se está decidiendo. Eso hace legítimo comparar el reparto
+antes y después: solo cambia el numerador.
+
+Con esa primitiva se responden las dos preguntas que uno se hace de verdad: «no
+tengo merluza, ¿por qué la cambio?» (el sustituto que menos altera) y «el ajuste
+dice que no llego al 35% de proteína» (el cambio que más acerca).
+
+### Tres filtros que hacen la diferencia entre útil y absurdo
+
+**La intuición falla.** Falta proteína, así que metes pollo: cambiar 100 g de
+arroz por 313 g de pollo triplica la proteína y de paso hunde los hidratos del
+46% al 28%, catorce puntos por debajo de lo pedido. Neto: acerca 0,1 puntos. La
+quinoa, que parece menos, acerca 2,8. Por eso hay una **mejora mínima**: ofrecer
+un cambio que no cambia nada sería engañoso.
+
+**Las cantidades tienen que ser comida.** Igualar 80 g de arroz con lechuga son
+1,4 kg. Hay banda relativa y tope absoluto de 500 g.
+
+**Y hay alimentos con un perfil estupendo por 100 g que nadie come así.** La
+primera versión, probada contra el catálogo real, proponía **258 g de café
+soluble** para subir la proteína. Al cruzar de grupo quedan fuera bebidas,
+condimentos y suplementos; dentro del mismo grupo siguen valiendo, porque si
+estás cambiando un café, otro café es una respuesta razonable.
+
+Con los tres filtros, lo que propone para subir proteína sin tocar las kcal son
+**legumbres** —judía pinta, alubia, lenteja—, que es la respuesta correcta de
+manual. Que salga sola, sin habérselo dicho, es buena señal.
+
 ### Comparar versiones es un problema de emparejar, no de restar
 
 Al guardar un ajuste se **clona** la dieta, así que la versión nueva tiene los
@@ -292,7 +325,5 @@ subas a Supabase**: allí ya existe.
 
 ## Qué falta
 
-- **Sustitución de ingredientes**: la función que resuelve el techo del reparto
-  de macros que encontramos en la fase 0.
 - **Pulido**: renombrar y borrar dietas y personas, límites mínimo y máximo por
   componente, reordenar.
