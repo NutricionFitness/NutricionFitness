@@ -9,10 +9,17 @@ import {
   anadirComponente,
   aplicarAjuste,
   borrarComponente,
+  convertirComponente,
 } from "@/app/dietas/[id]/acciones";
 import BuscadorIngrediente from "./BuscadorIngrediente";
 import DietaVacia from "./DietaVacia";
 import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
+import {
+  conversionDisponible,
+  estadosIncoherentes,
+  etiquetaMedida,
+  type Equivalencia,
+} from "@/lib/dominio/medidas";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
 import {
   ajustar,
@@ -27,7 +34,13 @@ import {
 
 const redondear1 = (v: number) => Math.round(v * 10) / 10;
 
-function EditorCompleto({ filas }: { filas: DietaCompleta }) {
+function EditorCompleto({
+  filas,
+  equivalencias,
+}: {
+  filas: DietaCompleta;
+  equivalencias: Equivalencia[];
+}) {
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
 
@@ -94,10 +107,26 @@ function EditorCompleto({ filas }: { filas: DietaCompleta }) {
   const porId = new Map(idsComponentes.map((id, i) => [id, resultado.cambios[i]]));
   const comidas = [...(filas.comidas ?? [])].sort((a, b) => a.orden - b.orden);
 
+  // La dieta declara si sus cantidades van en crudo o en cocido. Si además
+  // contiene alimentos del estado contrario, los gramos no significan lo mismo
+  // en todas las filas y conviene decirlo antes de que cuadre un número falso.
+  const desajustes = estadosIncoherentes(
+    filas.estado_cantidades,
+    comidas.flatMap((m) => (m.componentes ?? []).map((c) => c.ingredientes.estado)),
+  );
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 300px", gap: 24 }}>
       {/* ------------------------------------------------ tabla de la dieta */}
       <div>
+        {desajustes.map((d) => (
+          <p key={d.estado} className="aviso" style={{ marginTop: 0 }}>
+            Esta dieta dice llevar las cantidades <strong>en {filas.estado_cantidades}</strong>, pero{" "}
+            {d.n === 1 ? "hay un ingrediente" : `hay ${d.n} ingredientes`} marcado
+            {d.n === 1 ? "" : "s"} como <strong>{d.estado}</strong>. Los gramos no
+            significan lo mismo en unas filas que en otras.
+          </p>
+        ))}
         {comidas.map((comida) => {
           const componentes = [...(comida.componentes ?? [])].sort((a, b) => a.orden - b.orden);
           if (!componentes.length)
@@ -149,11 +178,42 @@ function EditorCompleto({ filas }: { filas: DietaCompleta }) {
                     const cambio = porId.get(c.id);
                     const kcal100 = Number(c.ingredientes.kcal_100);
                     const gramos = Number(c.gramos);
+                    const etiqueta = etiquetaMedida(gramos, c.ingredientes.medidas_caseras);
+                    const conversion = conversionDisponible(
+                      c.ingrediente_id,
+                      gramos,
+                      equivalencias,
+                    );
                     return (
                       <tr key={c.id}>
                         <td>
                           {c.ingredientes.nombre}
-                          {c.bloqueado && <span className="chip" style={{ marginLeft: 8 }}>bloqueado</span>}
+                          {c.ingredientes.estado !== "desconocido" && (
+                            <span className="chip" style={{ marginLeft: 8 }}>
+                              {c.ingredientes.estado}
+                            </span>
+                          )}
+                          {c.bloqueado && <span className="chip" style={{ marginLeft: 6 }}>bloqueado</span>}
+                          {conversion && (
+                            <button
+                              className="enlace"
+                              style={{ marginLeft: 8, fontSize: 12 }}
+                              title={`Factor ${conversion.factor.toFixed(2)} deducido del agua que declara BEDCA`}
+                              onClick={() =>
+                                iniciar(() =>
+                                  convertirComponente(
+                                    c.id,
+                                    conversion.ingredienteDestino,
+                                    conversion.gramosDestino,
+                                    filas.id,
+                                  ).then(() => router.refresh()),
+                                )
+                              }
+                            >
+                              → pasar a {conversion.haciaCocido ? "cocido" : "crudo"} (
+                              {Math.round(conversion.gramosDestino)} g)
+                            </button>
+                          )}
                         </td>
                         <td className="num">
                           <input
@@ -172,6 +232,9 @@ function EditorCompleto({ filas }: { filas: DietaCompleta }) {
                                 );
                             }}
                           />
+                          {etiqueta && (
+                            <div className="suave" style={{ fontSize: 11 }}>≈ {etiqueta}</div>
+                          )}
                         </td>
                         {hayCambios && (
                           <td className="num">
@@ -385,10 +448,16 @@ function EditorCompleto({ filas }: { filas: DietaCompleta }) {
  * menos uno; intentarlo era lo que reventaba la pantalla al crear una dieta
  * nueva.
  */
-export default function EditorDieta({ dieta: filas }: { dieta: DietaCompleta }) {
+export default function EditorDieta({
+  dieta: filas,
+  equivalencias = [],
+}: {
+  dieta: DietaCompleta;
+  equivalencias?: Equivalencia[];
+}) {
   return contarComponentes(filas) === 0 ? (
     <DietaVacia filas={filas} />
   ) : (
-    <EditorCompleto filas={filas} />
+    <EditorCompleto filas={filas} equivalencias={equivalencias} />
   );
 }

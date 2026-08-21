@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "cargar-ingredientes": "node scripts/cargar-ingredientes.mjs"
+    "cargar-ingredientes": "node scripts/cargar-ingredientes.mjs",
+    "cargar-medidas": "node scripts/cargar-medidas.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

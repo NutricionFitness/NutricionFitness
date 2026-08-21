@@ -65,3 +65,44 @@ export async function aplicarAjuste(datos: {
   revalidatePath("/personas");
   return data as string;
 }
+
+/**
+ * Cambia un componente entre su versión cruda y su cocida, aplicando el factor
+ * de rendimiento. Los gramos los calcula el cliente con la misma función que
+ * usa para enseñar la vista previa, así que lo que se guarda es exactamente lo
+ * que el usuario vio antes de pulsar.
+ */
+export async function convertirComponente(
+  id: string,
+  ingredienteDestino: number,
+  gramosDestino: number,
+  dietaId: string,
+) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase
+    .from("componentes")
+    .update({ ingrediente_id: ingredienteDestino, gramos: gramosDestino })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${dietaId}`);
+}
+
+/** Guarda una medida casera propia para un ingrediente. */
+export async function crearMedida(
+  ingredienteId: number,
+  nombre: string,
+  gramos: number,
+  dietaId: string,
+) {
+  const supabase = await clienteServidor();
+  const { data: usuario } = await supabase.auth.getUser();
+  if (!usuario?.user) throw new Error("sin sesión");
+  const { error } = await supabase.from("medidas_caseras").insert({
+    ingrediente_id: ingredienteId,
+    owner_id: usuario.user.id,
+    nombre: nombre.trim(),
+    gramos,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${dietaId}`);
+}

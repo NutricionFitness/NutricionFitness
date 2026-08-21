@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 const CAMPOS_INGREDIENTE =
   "id, owner_id, codigo_bedca, nombre, nombre_norm, nombre_en, grupo, estado, " +
   "prot_100, hc_100, grasa_100, fibra_100, alcohol_100, ags_100, agua_100, " +
-  "sodio_100, kcal_ref, kcal_100, porcion_comestible, origen, preferente, revisado";
+  "sodio_100, kcal_ref, kcal_100, porcion_comestible, origen, preferente, revisado, " +
+  "medidas_caseras ( id, nombre, gramos, owner_id )";
 
 export default async function PaginaDieta({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,6 +33,26 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
 
   if (error || !data) notFound();
 
+  // Equivalencias crudo↔cocido de los ingredientes que hay en esta dieta.
+  // Van en consulta aparte porque no cuelgan del ingrediente: son una relación
+  // entre dos de ellos.
+  const idsIngredientes = [
+    ...new Set(
+      ((data as unknown as DietaCompleta).comidas ?? []).flatMap((m) =>
+        (m.componentes ?? []).map((c) => c.ingrediente_id),
+      ),
+    ),
+  ];
+  const { data: equivalencias } = idsIngredientes.length
+    ? await supabase
+        .from("equivalencias_coccion")
+        .select("ingrediente_crudo_id, ingrediente_cocido_id, factor, agua_crudo, agua_cocido")
+        .or(
+          `ingrediente_crudo_id.in.(${idsIngredientes.join(",")}),` +
+            `ingrediente_cocido_id.in.(${idsIngredientes.join(",")})`,
+        )
+    : { data: [] };
+
   const persona = (data as unknown as { personas: { id: string; nombre: string } | null }).personas;
 
   return (
@@ -50,7 +71,10 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
         {data.estado_cantidades} ·{" "}
         <Link href={`/dietas/${data.id}/historial`}>ver historial</Link>
       </p>
-      <EditorDieta dieta={data as unknown as DietaCompleta} />
+      <EditorDieta
+        dieta={data as unknown as DietaCompleta}
+        equivalencias={equivalencias ?? []}
+      />
     </>
   );
 }

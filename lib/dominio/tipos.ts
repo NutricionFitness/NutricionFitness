@@ -23,6 +23,13 @@ export interface FilaIngrediente {
   origen: string | null;
   preferente: boolean;
   revisado: boolean;
+  /** Las medidas caseras vienen anidadas cuando la consulta las pide. */
+  medidas_caseras?: Array<{
+    id: string;
+    nombre: string;
+    gramos: number;
+    owner_id: string | null;
+  }>;
 }
 
 export interface FilaPersona {

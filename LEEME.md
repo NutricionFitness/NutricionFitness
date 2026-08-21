@@ -31,6 +31,7 @@ En el **SQL Editor** de Supabase, ejecuta en este orden:
 1. `supabase/migraciones/0001_esquema.sql`
 2. `supabase/migraciones/0002_guardar_ajuste.sql`
 3. `supabase/migraciones/0003_linaje.sql`
+4. `supabase/migraciones/0004_medidas.sql`
 
 Si ya tenías la base creada de antes, te basta con ejecutar la que falte: cada
 migración es independiente y se puede volver a ejecutar sin romper nada.
@@ -54,14 +55,19 @@ al repositorio: se salta el control de acceso por diseño.
 
 ```
 npm run cargar-ingredientes
+npm run cargar-medidas
 ```
 
-Sube los 2.157 ingredientes utilizables de la fase 1 con `owner_id` nulo, que es
+El primero sube los 2.157 ingredientes utilizables de la fase 1 con `owner_id` nulo, que es
 como se marca el catálogo compartido: lo lee cualquiera que haya entrado, no lo
 modifica nadie. Es idempotente, puedes relanzarlo.
 
 Al terminar comprueba que la base calcula bien la energía de un ingrediente
 conocido. Si eso falla, algo se ha cargado mal y lo dice.
+
+El segundo siembra **472 medidas caseras** (1 huevo = 53 g, 1 cucharada de
+aceite = 9 g…) y **25 equivalencias crudo↔cocido**. Te dirá también qué
+equivalencias ha descartado y por qué; conviene leerlo.
 
 ### 5. Tu usuario
 
@@ -115,12 +121,14 @@ supabase/
   migraciones/0001_esquema.sql          tablas, restricciones, RLS
   migraciones/0002_guardar_ajuste.sql   guardar un ajuste como versión nueva
   migraciones/0003_linaje.sql           árbol de versiones y totales por comida
+  migraciones/0004_medidas.sql          medidas caseras y equivalencias de cocción
   pruebas/                              andamio y pruebas contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
+scripts/cargar-medidas.mjs
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor y comparador  (28 tests)
+  dominio/        conversión filas ↔ motor, comparador y medidas  (45 tests)
   supabase/       clientes de navegador y servidor
 app/
   login, cuenta, personas, personas/[id], dietas/[id],
@@ -203,6 +211,39 @@ ordena de forma estable y devuelve los ids en paralelo, y `gramosAGuardar`
 **revienta** si las longitudes no coinciden. Guardar gramos cruzados en silencio
 sería el peor fallo posible de esta aplicación.
 
+### Las medidas caseras no se guardan en el componente
+
+Nadie pesa un huevo, lo cuenta. Pero la medida es una comodidad de **entrada y
+de lectura**, no un dato del componente. Si se guardara «2 unidades», el primer
+ajuste la desincronizaría —el motor mueve gramos, no unidades— y acabarías
+viendo «2 huevos» junto a 87 g. Los gramos son el dato; la medida se deduce al
+mostrar.
+
+Y solo se enseña cuando cuadra: 106 g de huevo son «2 unidades», pero 72 g no
+son ni una ni una y media, así que ahí no se dice nada y mandan los gramos.
+Decir «1 unidad» cuando son 72 g sería mentir con buena intención.
+
+### Los factores de cocción se deducen, no se inventan
+
+`factor = (100 − agua_crudo) / (100 − agua_cocido)`, que es cuántos gramos de
+cocido salen de un gramo crudo suponiendo que solo se pierde o se gana agua. Sale
+de la propia BEDCA, no de una tabla copiada.
+
+Esa suposición se rompe al freír (entra aceite) y cuando la pareja mezcla dos
+métodos de cocinado. Por eso hay dos filtros: los fritos quedan fuera, y cada
+factor tiene que caer dentro de lo plausible **para su tipo de alimento** —una
+carne pierde peso, un cereal seco lo gana—.
+
+De 28 parejas encontradas se aceptan 25. Se descartan la patata (factor 0,37: esa
+«patata cocida» de BEDCA es en realidad asada), la calabaza (3,03) y la sémola
+(6,74). El script dice cuáles descarta y por qué: un factor mal puesto cambiaría
+una dieta en silencio, que es lo peor que puede pasar aquí.
+
+Son solo 25 alimentos de 2.157, así que la conversión es un extra. Lo que sí
+cubre a todos es **el aviso**: si la dieta dice llevar las cantidades en crudo y
+contiene ingredientes marcados como cocidos, se dice, porque ahí los gramos no
+significan lo mismo en unas filas que en otras.
+
 ### Comparar versiones es un problema de emparejar, no de restar
 
 Al guardar un ajuste se **clona** la dieta, así que la versión nueva tiene los
@@ -251,8 +292,6 @@ subas a Supabase**: allí ya existe.
 
 ## Qué falta
 
-- **Medidas caseras y factores crudo↔cocido**: 1 huevo = 53 g comestibles,
-  arroz crudo → cocido. Quita la fuente de error más común del día a día.
 - **Sustitución de ingredientes**: la función que resuelve el techo del reparto
   de macros que encontramos en la fase 0.
 - **Pulido**: renombrar y borrar dietas y personas, límites mínimo y máximo por
