@@ -990,7 +990,33 @@ tr.total td {
 .campo small {
   color: var(--tenue);
   font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* Un ejemplo con números de verdad vale más que otro párrafo de teoría. */
+.ejemplo {
+  margin: 2px 0 0;
+  padding: 9px 11px;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  background: var(--panel-2);
+  border-radius: var(--r-s);
+  font-size: 12px;
   line-height: 1.4;
+  color: var(--suave);
+}
+.ejemplo .pie-ejemplo {
+  color: var(--tenue);
+  padding-bottom: 3px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--linea);
+}
+.ejemplo b {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--tinta);
 }
 
 .opcion {

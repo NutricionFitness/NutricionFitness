@@ -40,6 +40,12 @@ import {
 
 const redondear1 = (v: number) => Math.round(v * 10) / 10;
 
+/** «equitativo_kcal» se lee «Equitativo kcal»: es una opción, no una constante. */
+const nombreModo = (m: Modo) => {
+  const t = m.replace(/_/g, " ");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
 function EditorCompleto({
   filas,
   equivalencias,
@@ -744,7 +750,7 @@ function EditorCompleto({
             <select value={modo} onChange={(e) => setModo(e.target.value as Modo)}>
               {MODOS.map((m) => (
                 <option key={m} value={m}>
-                  {m.replace(/_/g, " ")}
+                  {nombreModo(m)}
                 </option>
               ))}
             </select>
@@ -765,7 +771,7 @@ function EditorCompleto({
           {conMacros && (
             <label className="campo">
               <span className="etiqueta">
-                Cuánto puede cambiar la dieta: <b className="cifra">{fuerza}</b>
+                Cuánto insistir en ese reparto: <b className="cifra">{fuerza}</b>
               </span>
               <input
                 type="range"
@@ -776,12 +782,28 @@ function EditorCompleto({
                 onChange={(e) => setFuerza(Number(e.target.value))}
               />
               <small>
-                Cuánto vale respetar el reparto de macros frente a no alejarse de la
-                dieta que ya tienes. Bajo, apenas mueve los gramos y el reparto queda
-                como salga; alto, se acerca al reparto que le pides aunque tenga que
-                cambiar mucho más. Solo cuenta con «Mantener el reparto de macros»
-                marcado.
+                No es un porcentaje ni un tope: es un mando sin unidades. Al pedir un
+                reparto de macros hay dos cosas que tiran en sentidos contrarios
+                —clavar ese reparto y mover los menos gramos posibles—, y esto decide
+                cuál gana. Cuanto más alto, más se acerca al reparto pedido y menos se
+                parece la dieta a la que tenías.
               </small>
+              <ul className="ejemplo">
+                <li className="pie-ejemplo">
+                  Ejemplo: una dieta de 1.681 kcal repartida 27/47/26 a la que le pides
+                  1.850 kcal con 40/38/22.
+                </li>
+                <li>
+                  <b>10</b> se queda en 29/46/25 y mueve unos 260 g en total.
+                </li>
+                <li>
+                  <b>60</b> llega a 33/44/23 moviendo unos 400 g.
+                </li>
+                <li>
+                  <b>300</b> llega a 38/41/21, pero moviendo unos 655 g: la merluza
+                  pasa de 180 a 315 g.
+                </li>
+              </ul>
             </label>
           )}
 
@@ -792,17 +814,20 @@ function EditorCompleto({
             <input
               type="range"
               min={5}
-              max={100}
+              max={300}
               step={5}
               value={holgura}
               onChange={(e) => setHolgura(Number(e.target.value))}
             />
             <small>
               Cuánto puede moverse cada ingrediente respecto a los gramos que tiene
-              ahora: con ±{holgura}%, uno de 100 g se queda entre {100 - holgura} y{" "}
-              {100 + holgura} g. <strong>Este es el tope</strong> de todos los que no
-              tengan un mínimo y un máximo propios. Estrecho, cambios pequeños y puede
-              que no se llegue al objetivo; ancho, más sitio para cuadrarlo.
+              ahora: con ±{holgura}%, uno de 100 g se queda entre{" "}
+              {Math.max(0, 100 - holgura)} y {100 + holgura} g.{" "}
+              <strong>Este es el tope</strong> de todos los que no tengan un mínimo y un
+              máximo propios. Estrecho, cambios pequeños y puede que no se llegue al
+              objetivo; ancho, más sitio para cuadrarlo.
+              {holgura >= 100 &&
+                " Del 100% para arriba el mínimo ya es 0 g: lo único que sigue creciendo es el máximo."}
             </small>
           </label>
 

@@ -116,8 +116,8 @@ export default function CabeceraDieta({
         </span>
 
         <span className="fila" style={{ gap: 12, fontSize: 13.5 }}>
-          <Link href={`/dietas/${dieta.id}/historial`}>historial</Link>
-          <Link href={`/dietas/${dieta.id}/imprimir`}>imprimir o PDF</Link>
+          <Link href={`/dietas/${dieta.id}/historial`}>Historial</Link>
+          <Link href={`/dietas/${dieta.id}/imprimir`}>Imprimir o PDF</Link>
         </span>
 
         <span className="acciones">

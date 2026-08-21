@@ -15,6 +15,12 @@ interface Version {
   profundidad: number;
 }
 
+/** El modo del ajuste, escrito como en el selector: «Equitativo kcal». */
+const modo = (m: string) => {
+  const t = m.replace(/_/g, " ");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
 const fecha = (s: string) =>
   new Date(s).toLocaleDateString("es-ES", {
     day: "2-digit",
@@ -115,7 +121,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
                 <td className="suave">
                   {ajuste ? (
                     <>
-                      {String(ajuste.modo).replace(/_/g, " ")}
+                      {modo(String(ajuste.modo))}
                       {ajuste.kcal_objetivo != null && (
                         <> · objetivo {Math.round(Number(ajuste.kcal_objetivo))}</>
                       )}
