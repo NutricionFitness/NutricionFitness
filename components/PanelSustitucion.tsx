@@ -65,7 +65,7 @@ export default function PanelSustitucion({
 
   return (
     <tr>
-      <td colSpan={7} style={{ background: "var(--panel)" }}>
+      <td colSpan={9} style={{ background: "var(--panel)" }}>
         <div className="fila" style={{ justifyContent: "space-between" }}>
           <strong>Cambiar {nombreActual}</strong>
           <button className="enlace" onClick={onCerrar}>cerrar</button>

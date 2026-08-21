@@ -32,6 +32,7 @@ En el **SQL Editor** de Supabase, ejecuta en este orden:
 2. `supabase/migraciones/0002_guardar_ajuste.sql`
 3. `supabase/migraciones/0003_linaje.sql`
 4. `supabase/migraciones/0004_medidas.sql`
+5. `supabase/migraciones/0005_duplicar.sql`
 
 Si ya tenías la base creada de antes, te basta con ejecutar la que falte: cada
 migración es independiente y se puede volver a ejecutar sin romper nada.
@@ -122,6 +123,7 @@ supabase/
   migraciones/0002_guardar_ajuste.sql   guardar un ajuste como versión nueva
   migraciones/0003_linaje.sql           árbol de versiones y totales por comida
   migraciones/0004_medidas.sql          medidas caseras y equivalencias de cocción
+  migraciones/0005_duplicar.sql         copiar una dieta como plantilla
   pruebas/                              andamio y pruebas contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
@@ -135,6 +137,10 @@ app/
   dietas/[id]/historial, comparar, ingredientes
 components/
   EditorDieta.tsx          la pantalla de trabajo
+  BotonPeligroso.tsx       borrados que dicen qué se llevan por delante
+  CabeceraDieta.tsx        renombrar, duplicar, borrar, estado de cantidades
+  CabeceraPersona.tsx      renombrar y borrar persona
+  AnadirComida.tsx
   PanelSustitucion.tsx     cambiar un alimento por otro
   DietaVacia.tsx           una dieta recién creada, antes del primer ingrediente
   BuscadorIngrediente.tsx
@@ -245,6 +251,26 @@ cubre a todos es **el aviso**: si la dieta dice llevar las cantidades en crudo y
 contiene ingredientes marcados como cocidos, se dice, porque ahí los gramos no
 significan lo mismo en unas filas que en otras.
 
+### Copiar una dieta no es lo mismo que versionarla
+
+`guardar_ajuste` crea una **versión**: cuelga de su madre y suma uno al contador,
+así que entra en el historial. `duplicar_dieta` crea una dieta **independiente**,
+en versión 1 y sin madre: es una plantilla, no un paso. Mezclarlas ensuciaría el
+árbol de versiones, que es justo lo que hace útil la pantalla de historial.
+
+### Los borrados dicen qué se llevan
+
+Borrar una persona se lleva **todas sus dietas** —la clave está en cascada— y
+borrar una dieta **no** se lleva sus versiones hijas, que quedan sueltas. Las dos
+cosas están fijadas por pruebas, y la interfaz las cuenta antes de que pulses:
+«se borrarán también sus 4 dietas», «se borra solo esta versión, las otras 2 se
+conservan».
+
+No se usa el `confirm()` del navegador porque ahí no cabe ese recuento, y el
+recuento es justo lo que hace falta para decidir. Las comidas solo se pueden
+quitar vacías: borrar una con ingredientes dentro se los llevaría sin que se vea,
+y eso no es un botón, es una trampa.
+
 ### Sustituir es isoenergético, y por eso funciona
 
 Cambiar A por B **en la cantidad que aporta las mismas kilocalorías**. El total
@@ -325,5 +351,8 @@ subas a Supabase**: allí ya existe.
 
 ## Qué falta
 
-- **Pulido**: renombrar y borrar dietas y personas, límites mínimo y máximo por
-  componente, reordenar.
+Nada de la lista inicial. Ideas para más adelante, si aparecen usándola:
+
+- Notas por dieta y por persona.
+- Exportar una dieta a PDF para dársela impresa a la persona.
+- Micronutrientes: los datos ya están en la tabla `valores` desde la fase 1.

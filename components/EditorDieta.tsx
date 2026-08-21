@@ -9,8 +9,12 @@ import {
   anadirComponente,
   aplicarAjuste,
   borrarComponente,
+  borrarComida,
+  crearComida,
+  moverComponente,
   cambiarIngrediente,
 } from "@/app/dietas/[id]/acciones";
+import AnadirComida from "./AnadirComida";
 import BuscadorIngrediente from "./BuscadorIngrediente";
 import PanelSustitucion from "./PanelSustitucion";
 import DietaVacia from "./DietaVacia";
@@ -58,6 +62,7 @@ function EditorCompleto({
   const [fuerza, setFuerza] = useState(60);
   const [holgura, setHolgura] = useState(40);
   const [sustituyendo, setSustituyendo] = useState<string | null>(null);
+  const [verLimites, setVerLimites] = useState(false);
 
   const opciones = useMemo(
     () => ({
@@ -131,6 +136,17 @@ function EditorCompleto({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 300px", gap: 24 }}>
       {/* ------------------------------------------------ tabla de la dieta */}
       <div>
+        <div className="fila" style={{ marginBottom: 4 }}>
+          <label className="fila suave" style={{ gap: 6, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={verLimites}
+              onChange={(e) => setVerLimites(e.target.checked)}
+              style={{ width: 15 }}
+            />
+            Ver los márgenes de cada componente
+          </label>
+        </div>
         {desajustes.map((d) => (
           <p key={d.estado} className="aviso" style={{ marginTop: 0 }}>
             Esta dieta dice llevar las cantidades <strong>en {filas.estado_cantidades}</strong>, pero{" "}
@@ -144,7 +160,21 @@ function EditorCompleto({
           if (!componentes.length)
             return (
               <section key={comida.id}>
-                <h2>{comida.nombre}</h2>
+                <h2 className="fila" style={{ gap: 10 }}>
+                  {comida.nombre}
+                  <button
+                    className="enlace"
+                    style={{ fontSize: 12 }}
+                    title="Quitar esta comida"
+                    onClick={() =>
+                      iniciar(() =>
+                        borrarComida(comida.id, filas.id).then(() => router.refresh()),
+                      )
+                    }
+                  >
+                    quitar
+                  </button>
+                </h2>
                 <p className="vacio" style={{ padding: "8px 0" }}>Sin componentes.</p>
                 <BuscadorIngrediente
                   onElegir={(ingredienteId, gramos) =>
@@ -182,11 +212,13 @@ function EditorCompleto({
                     {hayCambios && <th className="num">Propuesta</th>}
                     <th className="num">kcal</th>
                     <th className="num">Prioridad</th>
+                    {verLimites && <th className="num">Mín</th>}
+                    {verLimites && <th className="num">Máx</th>}
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {componentes.map((c) => {
+                  {componentes.map((c, i) => {
                     const cambio = porId.get(c.id);
                     const kcal100 = Number(c.ingredientes.kcal_100);
                     const gramos = Number(c.gramos);
@@ -291,7 +323,75 @@ function EditorCompleto({
                             <option value="4">Mucho</option>
                           </select>
                         </td>
+                        {verLimites && (
+                          <>
+                            <td className="num">
+                              <input
+                                type="number"
+                                min={0}
+                                placeholder="—"
+                                defaultValue={c.min_g ?? ""}
+                                title="Por debajo de esto no bajará el ajuste"
+                                style={{ width: 68, textAlign: "right" }}
+                                onBlur={(e) => {
+                                  const v = e.target.value === "" ? null : Number(e.target.value);
+                                  if (v !== (c.min_g === null ? null : Number(c.min_g)))
+                                    iniciar(() =>
+                                      actualizarComponente(c.id, { min_g: v }, filas.id).then(() =>
+                                        router.refresh(),
+                                      ),
+                                    );
+                                }}
+                              />
+                            </td>
+                            <td className="num">
+                              <input
+                                type="number"
+                                min={0}
+                                placeholder="—"
+                                defaultValue={c.max_g ?? ""}
+                                title="Por encima de esto no subirá el ajuste"
+                                style={{ width: 68, textAlign: "right" }}
+                                onBlur={(e) => {
+                                  const v = e.target.value === "" ? null : Number(e.target.value);
+                                  if (v !== (c.max_g === null ? null : Number(c.max_g)))
+                                    iniciar(() =>
+                                      actualizarComponente(c.id, { max_g: v }, filas.id).then(() =>
+                                        router.refresh(),
+                                      ),
+                                    );
+                                }}
+                              />
+                            </td>
+                          </>
+                        )}
                         <td className="num">
+                          <button
+                            title="Subir"
+                            disabled={i === 0}
+                            onClick={() =>
+                              iniciar(() =>
+                                moverComponente(c.id, comida.id, -1, filas.id).then(() =>
+                                  router.refresh(),
+                                ),
+                              )
+                            }
+                          >
+                            ↑
+                          </button>
+                          <button
+                            title="Bajar"
+                            disabled={i === componentes.length - 1}
+                            onClick={() =>
+                              iniciar(() =>
+                                moverComponente(c.id, comida.id, 1, filas.id).then(() =>
+                                  router.refresh(),
+                                ),
+                              )
+                            }
+                          >
+                            ↓
+                          </button>
                           <button
                             title="Cambiar por otro alimento"
                             onClick={() =>
@@ -347,6 +447,11 @@ function EditorCompleto({
             </section>
           );
         })}
+        <AnadirComida
+          dietaId={filas.id}
+          orden={comidas.length}
+          onHecho={() => router.refresh()}
+        />
       </div>
 
       {/* ------------------------------------------------------ panel lateral */}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import CabeceraDieta from "@/components/CabeceraDieta";
 import EditorDieta from "@/components/EditorDieta";
 import { clienteServidor } from "@/lib/supabase/servidor";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
@@ -55,6 +56,10 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
 
   const persona = (data as unknown as { personas: { id: string; nombre: string } | null }).personas;
 
+  // Cuántas versiones hay en la familia, para poder avisar al borrar.
+  const { data: linaje } = await supabase.rpc("linaje_dieta", { p_dieta_id: id });
+  const nVersiones = Array.isArray(linaje) ? linaje.length : 1;
+
   return (
     <>
       <p className="sub" style={{ margin: 0 }}>
@@ -64,13 +69,17 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
           <Link href="/personas">← Personas</Link>
         )}
       </p>
-      <h1>{data.nombre}</h1>
-      <p className="sub">
-        Versión {data.version}
-        {data.dieta_padre_id ? " · procede de un ajuste" : ""} · cantidades en{" "}
-        {data.estado_cantidades} ·{" "}
-        <Link href={`/dietas/${data.id}/historial`}>ver historial</Link>
-      </p>
+      <CabeceraDieta
+        dieta={{
+          id: data.id as string,
+          nombre: data.nombre as string,
+          estado_cantidades: data.estado_cantidades as string,
+          version: data.version as number,
+          dieta_padre_id: data.dieta_padre_id as string | null,
+          persona_id: data.persona_id as string | null,
+        }}
+        nVersiones={nVersiones}
+      />
       <EditorDieta
         dieta={data as unknown as DietaCompleta}
         equivalencias={equivalencias ?? []}

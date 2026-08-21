@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import {
   rankearHaciaObjetivo,
@@ -175,4 +176,115 @@ export async function buscarSustitutos(datos: {
     );
   }
   return rankearSustitutos(yo, datos.gramos, candidatos);
+}
+
+// ---------------------------------------------------------------------------
+// Editar y borrar
+// ---------------------------------------------------------------------------
+
+export async function actualizarDieta(
+  id: string,
+  cambios: Partial<{
+    nombre: string;
+    descripcion: string | null;
+    estado_cantidades: "crudo" | "cocido" | "mixto";
+    modelo_energia: "atwater" | "declarada";
+    persona_id: string | null;
+    archivada: boolean;
+  }>,
+) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("dietas").update(cambios).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${id}`);
+  revalidatePath("/personas");
+}
+
+/**
+ * Borra una dieta.
+ *
+ * Sus versiones hijas NO se van con ella: la clave apunta con `on delete set
+ * null`, así que quedan como dietas independientes. Es deliberado —perder el
+ * historial entero por borrar un paso intermedio sería una sorpresa muy cara— y
+ * hay una prueba que lo fija.
+ */
+export async function borrarDieta(id: string, personaId: string | null) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("dietas").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/personas");
+  redirect(personaId ? `/personas/${personaId}` : "/personas");
+}
+
+/** Copia una dieta como plantilla independiente, no como versión. */
+export async function duplicarDieta(id: string, nombre?: string) {
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase.rpc("duplicar_dieta", {
+    p_dieta_id: id,
+    p_nombre: nombre ?? null,
+    p_persona_id: null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/personas");
+  redirect(`/dietas/${data as string}`);
+}
+
+export async function crearComida(dietaId: string, nombre: string, orden: number) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase
+    .from("comidas")
+    .insert({ dieta_id: dietaId, nombre: nombre.trim(), orden });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${dietaId}`);
+}
+
+export async function renombrarComida(id: string, nombre: string, dietaId: string) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase
+    .from("comidas").update({ nombre: nombre.trim() }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${dietaId}`);
+}
+
+export async function borrarComida(id: string, dietaId: string) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("comidas").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${dietaId}`);
+}
+
+/**
+ * Sube o baja un componente dentro de su comida.
+ *
+ * Se intercambian los `orden` de los dos vecinos en lugar de renumerar todo:
+ * son dos escrituras en vez de N, y el resto de filas ni se entera.
+ */
+export async function moverComponente(
+  id: string,
+  comidaId: string,
+  direccion: -1 | 1,
+  dietaId: string,
+) {
+  const supabase = await clienteServidor();
+  const { data: hermanos, error } = await supabase
+    .from("componentes")
+    .select("id, orden")
+    .eq("comida_id", comidaId)
+    .order("orden")
+    .order("id");
+  if (error || !hermanos) throw new Error(error?.message ?? "no se pudo leer la comida");
+
+  const i = hermanos.findIndex((c) => c.id === id);
+  const j = i + direccion;
+  if (i < 0 || j < 0 || j >= hermanos.length) return; // ya está en el extremo
+
+  // Si vienen todos con el mismo `orden` (por ejemplo 0), intercambiarlo no
+  // haría nada: primero se numeran por su posición actual.
+  const ordenes = hermanos.map((c, k) => (new Set(hermanos.map((h) => h.orden)).size === 1 ? k : c.orden));
+
+  await Promise.all([
+    supabase.from("componentes").update({ orden: ordenes[j] }).eq("id", hermanos[i].id),
+    supabase.from("componentes").update({ orden: ordenes[i] }).eq("id", hermanos[j].id),
+  ]);
+  revalidatePath(`/dietas/${dietaId}`);
 }

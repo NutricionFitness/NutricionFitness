@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import AccionesDieta from "@/components/AccionesDieta";
+import CabeceraPersona from "@/components/CabeceraPersona";
 import { clienteServidor } from "@/lib/supabase/servidor";
 import { crearDieta } from "../acciones";
 
@@ -27,8 +29,14 @@ export default async function Persona({ params }: { params: Promise<{ id: string
   return (
     <>
       <p className="sub" style={{ margin: 0 }}><Link href="/personas">← Personas</Link></p>
-      <h1>{persona.nombre}</h1>
-      <p className="sub">{dietas?.length ?? 0} dietas</p>
+      <CabeceraPersona
+        persona={{
+          id: persona.id as string,
+          nombre: persona.nombre as string,
+          notas: (persona as { notas?: string | null }).notas ?? null,
+        }}
+        nDietas={dietas?.length ?? 0}
+      />
 
       <form action={crearDieta} className="fila" style={{ marginBottom: 24 }}>
         <input type="hidden" name="persona_id" value={persona.id} />
@@ -47,6 +55,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
               <th className="num">P / HC / G</th>
               <th className="num">Versión</th>
               <th className="num">Fecha</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -69,6 +78,13 @@ export default async function Persona({ params }: { params: Promise<{ id: string
                   <td className="num">{d.version}</td>
                   <td className="num suave">
                     {new Date(d.creado_en as string).toLocaleDateString("es-ES")}
+                  </td>
+                  <td className="num">
+                    <AccionesDieta
+                      dietaId={d.id as string}
+                      personaId={persona.id as string}
+                      tieneVersiones={Boolean(d.dieta_padre_id) || (d.version as number) > 1}
+                    />
                   </td>
                 </tr>
               );

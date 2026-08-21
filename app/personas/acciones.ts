@@ -36,3 +36,28 @@ export async function crearDieta(datos: FormData) {
   );
   redirect(`/dietas/${data.id}`);
 }
+
+export async function actualizarPersona(
+  id: string,
+  cambios: Partial<{ nombre: string; notas: string | null; activa: boolean }>,
+) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("personas").update(cambios).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/personas/${id}`);
+  revalidatePath("/personas");
+}
+
+/**
+ * Borra una persona **y todas sus dietas**: la clave está en cascada.
+ *
+ * Por eso la interfaz enseña antes cuántas dietas se van a perder. Un borrado
+ * que arrastra cosas invisibles es la peor clase de botón.
+ */
+export async function borrarPersona(id: string) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("personas").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/personas");
+  redirect("/personas");
+}

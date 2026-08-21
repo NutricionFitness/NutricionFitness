@@ -1,0 +1,48 @@
+"use client";
+
+import { useState, useTransition } from "react";
+
+/**
+ * Un borrado que arrastra cosas tiene que decir qué arrastra ANTES de hacerlo.
+ *
+ * No usa `confirm()` del navegador a propósito: ahí no se puede enseñar el
+ * recuento de lo que se pierde, que es justo la información que hace falta para
+ * decidir. Pide una segunda pulsación con el aviso delante.
+ */
+export default function BotonPeligroso({
+  etiqueta,
+  aviso,
+  confirmacion = "Sí, borrar",
+  onConfirmar,
+}: {
+  etiqueta: string;
+  aviso: string;
+  confirmacion?: string;
+  onConfirmar: () => Promise<void> | void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [pendiente, iniciar] = useTransition();
+
+  if (!abierto)
+    return (
+      <button className="enlace" onClick={() => setAbierto(true)}>
+        {etiqueta}
+      </button>
+    );
+
+  return (
+    <span className="fila" style={{ gap: 8 }}>
+      <span className="aviso" style={{ fontSize: 13 }}>{aviso}</span>
+      <button
+        className="peligro"
+        disabled={pendiente}
+        onClick={() => iniciar(() => void onConfirmar())}
+      >
+        {pendiente ? "Borrando…" : confirmacion}
+      </button>
+      <button onClick={() => setAbierto(false)} disabled={pendiente}>
+        Cancelar
+      </button>
+    </span>
+  );
+}
