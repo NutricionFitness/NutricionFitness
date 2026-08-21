@@ -577,13 +577,20 @@ tr.total td {
   border-bottom: none;
 }
 
-/* La tabla como lista de tarjetas: listados sueltos sobre el fondo. */
+/* La tabla como lista de tarjetas: listados sueltos sobre el fondo.
+
+   El `overflow` va en `auto`, no en `hidden`: recorta igual las esquinas, y
+   además deja llegar a la última columna cuando la tabla no cabe. Estuvo en
+   `hidden` y el listado de personas se cortaba en el móvil sin poder deslizarlo,
+   porque era el único al que no se le había añadido la clase `.tabla`. Que
+   llegar a los datos dependa de acordarse de poner una segunda clase es una
+   trampa: se arregla aquí, de una vez, para todos los listados. */
 .listado {
   background: var(--panel);
   border: 1px solid var(--linea);
   border-radius: var(--r-m);
   box-shadow: var(--sombra-1);
-  overflow: hidden;
+  overflow: auto;
 }
 .listado table {
   margin: 0;
@@ -593,11 +600,6 @@ tr.total td {
 }
 .listado tr:last-child td {
   border-bottom: none;
-}
-/* Un listado que además tiene que deslizarse: la esquina redondeada la pone
-   `overflow`, pero aquí manda poder llegar a la última columna. */
-.listado.tabla {
-  overflow: auto;
 }
 
 /* ==================================================== cifras grandes ===== */

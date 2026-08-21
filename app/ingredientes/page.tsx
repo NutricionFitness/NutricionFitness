@@ -45,7 +45,7 @@ export default async function Ingredientes({
       {!data?.length ? (
         <p className="vacio">Sin resultados.</p>
       ) : (
-        <div className="listado tabla">
+        <div className="listado">
         <table>
           <thead>
             <tr>

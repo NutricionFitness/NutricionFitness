@@ -47,7 +47,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
       {!dietas?.length ? (
         <p className="vacio">Aún no tiene ninguna dieta.</p>
       ) : (
-        <div className="listado tabla">
+        <div className="listado">
         <table>
           <thead>
             <tr>

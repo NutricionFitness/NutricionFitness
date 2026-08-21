@@ -83,7 +83,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      <div className="listado tabla">
+      <div className="listado">
       <table>
         <thead>
           <tr>
@@ -160,7 +160,7 @@ export default async function Historial({ params }: { params: Promise<{ id: stri
             Se guardan a propósito: saber que se intentó y no se pudo es
             información, no un error que esconder.
           </p>
-          <div className="listado tabla">
+          <div className="listado">
             <table>
               <thead>
                 <tr>
