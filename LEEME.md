@@ -130,13 +130,15 @@ scripts/cargar-ingredientes.mjs
 scripts/cargar-medidas.mjs
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución  (76 tests)
+  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución  (82 tests)
   supabase/       clientes de navegador y servidor
 app/
   login, cuenta, personas, personas/[id], dietas/[id],
-  dietas/[id]/historial, comparar, ingredientes
+  dietas/[id]/historial, dietas/[id]/imprimir, comparar, ingredientes
+  hoja.css                 el papel: estilos de pantalla e impresión
 components/
   EditorDieta.tsx          la pantalla de trabajo
+  HojaDieta.tsx            la dieta como documento, para imprimir o PDF
   BotonPeligroso.tsx       borrados que dicen qué se llevan por delante
   CabeceraDieta.tsx        renombrar, duplicar, borrar, estado de cantidades
   CabeceraPersona.tsx      renombrar y borrar persona
@@ -229,6 +231,43 @@ mostrar.
 Y solo se enseña cuando cuadra: 106 g de huevo son «2 unidades», pero 72 g no
 son ni una ni una y media, así que ahí no se dice nada y mandan los gramos.
 Decir «1 unidad» cuando son 72 g sería mentir con buena intención.
+
+### El PDF no se genera: se imprime la página
+
+Hay librerías que dibujan un PDF, y hay servicios que abren un Chromium en el
+servidor para capturar la pantalla. Las dos cuestan lo suyo y las dos dan un
+resultado peor: la hoja se maqueta con CSS y se manda a imprimir, y el PDF lo
+hace el propio navegador con «Guardar como PDF». Sale con texto seleccionable,
+con la tipografía de verdad y con los saltos de página donde dice el CSS; no
+añade nada al paquete que se descarga el navegador ni una función de servidor
+que mantener; y la misma pantalla sirve para imprimir en papel, que era la otra
+mitad de lo que se pedía.
+
+La hoja mide en pantalla lo que va a medir en el papel —210 mm menos los 14 de
+margen del `@page`—, así que lo que se ve es lo que sale. Los colores de la
+barra van fijados en claro: el resto de la aplicación sigue el tema del sistema,
+pero una hoja para imprimir es papel.
+
+### En la hoja, cada dato en su columna
+
+Los gramos, la medida casera y las kilocalorías van en tres columnas de ancho
+fijo, iguales en todas las comidas. Con las columnas al ancho del contenido cada
+tabla se medía por su cuenta y los números bailaban de una comida a otra; y la
+medida metida entre paréntesis junto a los gramos acababa pegada al número de
+kilocalorías: «60 g (4 cucharadas)211».
+
+La identidad de cada tramo de la barra de reparto va escrita dentro del propio
+tramo, no solo en el color. Esto se imprime, y a veces se imprime en blanco y
+negro.
+
+### «2 unidad» está mal escrito
+
+Las medidas caseras se guardan en singular («unidad (M)», «cazo (en seco)») y se
+concuerdan al mostrarlas, que para eso el español tiene reglas: se pluraliza
+solo la cabeza del nombre —lo que va tras una preposición o entre paréntesis es
+una aclaración y no concuerda—, la `-z` pasa a `-ces` y la última sílaba pierde
+la tilde al añadir `-es` (ración → raciones). Un medio ya pide plural: «1½
+vasos». Son detalles de nada hasta que imprimes la hoja y se la das a alguien.
 
 ### Los factores de cocción se deducen, no se inventan
 
@@ -354,5 +393,4 @@ subas a Supabase**: allí ya existe.
 Nada de la lista inicial. Ideas para más adelante, si aparecen usándola:
 
 - Notas por dieta y por persona.
-- Exportar una dieta a PDF para dársela impresa a la persona.
 - Micronutrientes: los datos ya están en la tabla `valores` desde la fase 1.

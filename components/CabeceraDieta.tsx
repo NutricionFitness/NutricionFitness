@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import {
@@ -98,6 +99,8 @@ export default function CabeceraDieta({
             ))}
           </select>
         </span>
+
+        <Link href={`/dietas/${dieta.id}/imprimir`}>imprimir o PDF</Link>
 
         <button
           className="enlace"

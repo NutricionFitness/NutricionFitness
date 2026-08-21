@@ -56,7 +56,7 @@ export function etiquetaMedida(
     // Entre «½ cucharada» y «1 cucharadita», que encajan igual de bien, gana la
     // que sale en número entero: es como lo diría cualquiera.
     const puntos = (Number.isInteger(redondo) ? 0 : 1) + error;
-    const texto = `${formatear(redondo)} ${m.nombre}`;
+    const texto = `${formatear(redondo)} ${nombreMedida(m.nombre, redondo)}`;
     if (!mejor || puntos < mejor.puntos) mejor = { texto, puntos };
   }
   return mejor?.texto ?? null;
@@ -66,6 +66,43 @@ function formatear(n: number): string {
   if (Number.isInteger(n)) return String(n);
   const entero = Math.floor(n);
   return entero === 0 ? "½" : `${entero}½`;
+}
+
+const SIN_TILDE: Record<string, string> = { á: "a", é: "e", í: "i", ó: "o", ú: "u" };
+/** Palabras a partir de las cuales ya no se pluraliza: «cazo en seco» → «cazos en seco». */
+const CORTES = /^(de|del|con|en|sin|al|a|para|por)$/;
+
+function pluralPalabra(p: string): string {
+  const fin = p.slice(-1).toLowerCase();
+  if (fin === "z") return `${p.slice(0, -1)}ces`; // nuez → nueces
+  if ("aeiouáéó".includes(fin)) return `${p}s`; // taza → tazas
+  if (fin === "s" || fin === "x") return p; // invariable
+  // Consonante: +es, y la última sílaba pierde la tilde (ración → raciones).
+  return `${p.replace(/[áéíóú](?=[^áéíóú]*$)/, (v) => SIN_TILDE[v])}es`;
+}
+
+/**
+ * El nombre de la medida concordado con la cantidad.
+ *
+ * «2 unidad (M)» está mal escrito y esto se imprime y se manda a gente. Se
+ * pluraliza solo la cabeza del nombre: lo que va detrás de una preposición o
+ * entre paréntesis es una aclaración («de huevo», «(en seco)», «(200 ml)») y no
+ * concuerda. El «1» de «clara de 1 huevo» sobra en singular y estorba en plural,
+ * así que se quita siempre.
+ */
+export function nombreMedida(nombre: string, cantidad: number): string {
+  const limpio = nombre.replace(/\bde 1 /g, "de ");
+  if (cantidad <= 1) return limpio;
+
+  const m = limpio.match(/^(.*?)(\s*\(.*\))?$/);
+  const cabeza = (m?.[1] ?? limpio).trim();
+  const parentesis = m?.[2] ?? "";
+
+  const palabras = cabeza.split(/\s+/);
+  const corte = palabras.findIndex((p) => CORTES.test(p.toLowerCase()));
+  const hasta = corte === -1 ? palabras.length : corte;
+
+  return palabras.map((p, i) => (i < hasta ? pluralPalabra(p) : p)).join(" ") + parentesis;
 }
 
 /** La medida que conviene ofrecer por defecto al añadir un ingrediente. */

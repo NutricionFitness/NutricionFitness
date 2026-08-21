@@ -5,6 +5,7 @@ import {
   enMedidas,
   estadosIncoherentes,
   etiquetaMedida,
+  nombreMedida,
   medidaPorDefecto,
   type Equivalencia,
   type Medida,
@@ -23,12 +24,12 @@ const ACEITE = [m("cucharada", 9)];
 describe("etiqueta de medida", () => {
   it("traduce los casos limpios", () => {
     expect(etiquetaMedida(53, HUEVO)).toBe("1 unidad (M)");
-    expect(etiquetaMedida(106, HUEVO)).toBe("2 unidad (M)");
-    expect(etiquetaMedida(159, HUEVO)).toBe("3 unidad (M)");
+    expect(etiquetaMedida(106, HUEVO)).toBe("2 unidades (M)");
+    expect(etiquetaMedida(159, HUEVO)).toBe("3 unidades (M)");
   });
 
   it("admite medios", () => {
-    expect(etiquetaMedida(79.5, HUEVO)).toBe("1½ unidad (M)");
+    expect(etiquetaMedida(79.5, HUEVO)).toBe("1½ unidades (M)");
     expect(etiquetaMedida(27, HUEVO)).toBe("½ unidad (M)");
   });
 
@@ -40,7 +41,7 @@ describe("etiqueta de medida", () => {
 
   it("tolera pequeñas desviaciones, que es lo que deja un ajuste", () => {
     // el motor redondea a pasos de 5 g: 105 en vez de 106
-    expect(etiquetaMedida(105, HUEVO)).toBe("2 unidad (M)");
+    expect(etiquetaMedida(105, HUEVO)).toBe("2 unidades (M)");
   });
 
   it("no se estira a cantidades absurdas", () => {
@@ -128,5 +129,60 @@ describe("aviso de estados mezclados", () => {
   it("«desconocido» nunca dispara el aviso", () => {
     // el 63% del catálogo no declara estado: avisar por eso sería ruido puro
     expect(estadosIncoherentes("crudo", ["desconocido", "desconocido"])).toEqual([]);
+  });
+});
+
+describe("concordancia del nombre de la medida", () => {
+  it("en singular no toca nada", () => {
+    expect(nombreMedida("unidad (M)", 1)).toBe("unidad (M)");
+    expect(nombreMedida("cucharada", 0.5)).toBe("cucharada");
+  });
+
+  it("pluraliza todo el vocabulario que carga el script de medidas", () => {
+    const casos: Array<[string, string]> = [
+      ["unidad", "unidades"],
+      ["unidad (M)", "unidades (M)"],
+      ["unidad mediana", "unidades medianas"],
+      ["vaso (200 ml)", "vasos (200 ml)"],
+      ["taza (125 ml)", "tazas (125 ml)"],
+      ["caña (200 ml)", "cañas (200 ml)"],
+      ["copa (100 ml)", "copas (100 ml)"],
+      ["cucharada", "cucharadas"],
+      ["cucharadita", "cucharaditas"],
+      ["loncha", "lonchas"],
+      ["rebanada", "rebanadas"],
+      ["puñado", "puñados"],
+      ["onza", "onzas"],
+      ["porción", "porciones"],
+      ["ración (en crudo)", "raciones (en crudo)"],
+      ["cazo (en seco)", "cazos (en seco)"],
+      ["cazo (en crudo)", "cazos (en crudo)"],
+      ["lata escurrida", "latas escurridas"],
+      ["clara de 1 huevo", "claras de huevo"],
+      ["yema de 1 huevo", "yemas de huevo"],
+    ];
+    for (const [uno, varios] of casos) {
+      expect(nombreMedida(uno, 2), uno).toBe(varios);
+    }
+  });
+
+  it("el «1» de «de 1 huevo» también sobra en singular", () => {
+    expect(nombreMedida("clara de 1 huevo", 1)).toBe("clara de huevo");
+  });
+
+  it("no pluraliza lo que va detrás de una preposición", () => {
+    // «cazos en seco», no «cazos en secos»
+    expect(nombreMedida("cazo en seco", 3)).toBe("cazos en seco");
+    expect(nombreMedida("taza de café", 2)).toBe("tazas de café");
+  });
+
+  it("las reglas raras del español, que las hay", () => {
+    expect(nombreMedida("nuez", 2)).toBe("nueces");   // -z → -ces
+    expect(nombreMedida("cucharón", 2)).toBe("cucharones"); // pierde la tilde
+    expect(nombreMedida("crisis", 2)).toBe("crisis"); // invariable
+  });
+
+  it("un medio ya pide plural: «1½ vasos», no «1½ vaso»", () => {
+    expect(nombreMedida("vaso (200 ml)", 1.5)).toBe("vasos (200 ml)");
   });
 });

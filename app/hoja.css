@@ -1,0 +1,302 @@
+/* ===========================================================================
+   La dieta como documento: en pantalla se ve como el papel que va a salir.
+
+   Los colores están fijados en claro a propósito. El resto de la app sigue el
+   tema del sistema, pero una hoja para imprimir es papel: si heredara el modo
+   oscuro, en pantalla se vería una cosa y en el PDF otra.
+
+   Paleta categórica validada (checks de separación CVD y visión normal en
+   claro). El contraste del verde sobre blanco queda por debajo de 3:1, así que
+   cada tramo lleva su etiqueta visible dentro: la identidad nunca depende del
+   color, ni en pantalla, ni en gris, ni impreso en blanco y negro.
+   =========================================================================== */
+
+.hoja {
+  color-scheme: light;
+  --papel: #ffffff;
+  --tinta-1: #17150f;
+  --tinta-2: #57534a;
+  --tinta-3: #8a8578;
+  --linea-1: #e7e2d8;
+  --s1: #2a78d6; /* proteína */
+  --s2: #eb6834; /* hidratos */
+  --s3: #1baf7a; /* grasa    */
+
+  background: var(--papel);
+  color: var(--tinta-1);
+  /* 210 − 14 − 14 = 182 mm de ancho útil: exactamente los del A4 con los
+     márgenes de @page. Así lo que se ve en pantalla mide lo que va a medir en
+     el papel y nada se parte de más al imprimir. */
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 16mm 14mm;
+  border: 1px solid var(--linea-1);
+  border-radius: 4px;
+  box-shadow: 0 2px 18px rgba(0, 0, 0, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- cabecera ------------------------------------------------------------ */
+.hoja-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--tinta-1);
+}
+.hoja-cabecera h1 {
+  margin: 0;
+  font-size: 23px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.hoja .para {
+  margin: 3px 0 0;
+  font-size: 15px;
+  color: var(--tinta-2);
+}
+.hoja-fecha {
+  text-align: right;
+  font-size: 12px;
+  color: var(--tinta-2);
+  white-space: nowrap;
+}
+.hoja .tenue {
+  color: var(--tinta-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* --- fichas de totales --------------------------------------------------- */
+.fichas {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 10px;
+  margin: 18px 0 6px;
+}
+.ficha {
+  border: 1px solid var(--linea-1);
+  border-radius: 7px;
+  padding: 10px 12px;
+}
+.ficha.destacada {
+  border-color: var(--tinta-1);
+}
+.ficha-valor {
+  font-size: 27px;
+  font-weight: 640;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.ficha.destacada .ficha-valor {
+  font-size: 34px;
+}
+.ficha-unidad {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--tinta-2);
+}
+.ficha-nombre {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--tinta-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+/* --- barra de reparto ---------------------------------------------------- */
+.reparto {
+  margin: 16px 0 4px;
+}
+.titulo-seccion {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--tinta-3);
+  font-weight: 620;
+  margin: 0 0 7px;
+}
+/* El separador entre tramos es un hueco del propio papel, no un borde. */
+.barra {
+  display: flex;
+  gap: 2px;
+  height: 30px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tramo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.tramo:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.tramo:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.tramo-etiqueta {
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.leyenda {
+  display: flex;
+  gap: 14px;
+  margin: 7px 0 0;
+  font-size: 11.5px;
+  color: var(--tinta-2);
+}
+.leyenda span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* --- comidas ------------------------------------------------------------- */
+.hoja .comida {
+  margin-top: 17px;
+  break-inside: avoid;
+}
+.hoja .comida h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+  margin: 0 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--linea-1);
+}
+.comida-kcal {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tinta-2);
+}
+.hoja .comida table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+.hoja col.c-gramos {
+  width: 64px;
+}
+.hoja col.c-medida {
+  width: 162px;
+}
+.hoja col.c-kcal {
+  width: 48px;
+}
+/* Las columnas llevan el padding en `td.x` y no en `.x`: si no, el `.hoja
+   .comida td` de arriba gana por especificidad y los números se pegan unos a
+   otros. Pasó: «60 g (5 cucharadas)211». */
+.hoja .comida td {
+  padding: 3.5px 0;
+  border: none;
+  vertical-align: baseline;
+}
+.hoja .comida td.alimento {
+  padding-right: 14px;
+}
+.hoja .estado {
+  color: var(--tinta-3);
+  font-size: 11.5px;
+}
+/* Cada dato en su columna: así los gramos quedan alineados entre sí y las
+   medidas entre sí, en vez de bailar según lo largo que sea lo de al lado. */
+.hoja .comida td.gramos {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 600;
+  padding-left: 10px;
+}
+.hoja .comida td.medida {
+  color: var(--tinta-2);
+  padding-left: 10px;
+}
+.hoja .comida td.kcal {
+  text-align: right;
+  padding-left: 10px;
+  color: var(--tinta-2);
+  white-space: nowrap;
+}
+
+/* --- pie ----------------------------------------------------------------- */
+.hoja-pie {
+  margin-top: 22px;
+  padding-top: 10px;
+  border-top: 1px solid var(--linea-1);
+}
+.hoja .nota {
+  margin: 0 0 7px;
+  font-size: 12.5px;
+  color: var(--tinta-1);
+}
+
+/* ===========================================================================
+   Impresión
+   =========================================================================== */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+  .no-imprimir,
+  header.barra {
+    display: none !important;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+  .hoja {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* Que los colores de la barra salgan en el PDF y no en blanco. */
+  .barra,
+  .tramo,
+  .punto {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Una comida no se parte entre dos hojas si cabe entera. */
+  .hoja .comida {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* El pie apretado: por unos milímetros se iba solo a una página en blanco. */
+  .hoja-pie {
+    margin-top: 13px;
+    padding-top: 8px;
+    break-inside: avoid;
+  }
+  .hoja-cabecera {
+    break-after: avoid;
+  }
+  .fichas,
+  .reparto {
+    break-inside: avoid;
+  }
+}
