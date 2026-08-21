@@ -776,15 +776,35 @@ tr.total td {
 
 /* ========================================================== comidas ====== */
 
+/* La tarjeta NO recorta lo que sobresale.
+
+   Tuvo `overflow: hidden` para redondear las esquinas, y con eso se comía el
+   desplegable del buscador de ingredientes: la lista salía dentro de la tarjeta
+   y no se podía pulsar ni una opción. Las esquinas se redondean ahora pieza a
+   pieza —la cabecera arriba, lo último abajo—, que cuesta tres reglas más y deja
+   salir a lo que tiene que salir. */
 .comida {
   background: var(--panel);
   border: 1px solid var(--linea);
   border-radius: var(--r-m);
   box-shadow: var(--sombra-1);
   margin-bottom: 14px;
-  overflow: hidden;
+}
+.comida > .tabla {
+  border-radius: 0;
+}
+/* Lo último de la tarjeta redondea por abajo, sea el pie o la propia tabla. */
+.comida > footer,
+.comida > div:last-child,
+.comida > .tabla:last-child {
+  border-bottom-left-radius: var(--r-m);
+  border-bottom-right-radius: var(--r-m);
+}
+.comida > .tabla:last-child table tr:last-child td {
+  border-bottom: none;
 }
 .comida > header {
+  border-radius: var(--r-m) var(--r-m) 0 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -808,9 +828,6 @@ tr.total td {
 .comida > header .kcal-comida em {
   font-style: normal;
   color: var(--tinta);
-}
-.comida .tabla {
-  border-radius: 0;
 }
 .comida table th:first-child,
 .comida table td:first-child {
