@@ -33,7 +33,7 @@ export default async function Ingrediente({
     supabase
       .from("ingredientes")
       .select(
-        `id, owner_id, nombre, grupo, estado, codigo_bedca, origen, notas,
+        `id, owner_id, nombre, grupo, estado, codigo_bedca, codigo_barras, origen, notas,
          prot_100, hc_100, grasa_100, fibra_100, alcohol_100, ags_100, agua_100,
          sodio_100, kcal_ref, porcion_comestible, revisado, editado_a_mano,
          alergenos_revisados, actualizado_en,
@@ -67,6 +67,7 @@ export default async function Ingrediente({
     grupo: (data.grupo as string | null) ?? null,
     estado: data.estado as Estado,
     codigo_bedca: (data.codigo_bedca as string | null) ?? null,
+    codigo_barras: (data.codigo_barras as string | null) ?? null,
     origen: (data.origen as string | null) ?? null,
     notas: (data.notas as string | null) ?? null,
     prot_100: Number(data.prot_100),

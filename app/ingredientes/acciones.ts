@@ -4,40 +4,48 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { clienteServidor } from "@/lib/supabase/servidor";
-import type { DatosIngrediente } from "./tipos";
-
-/** Igual que la columna `nombre_norm` de la base: minúsculas y sin tildes. */
-const normalizar = (s: string) =>
-  s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+import {
+  filaIngrediente,
+  ORIGEN_OFF,
+  type AltaEscaneada,
+  type DatosIngrediente,
+} from "./tipos";
 
 /**
- * Lo que se manda a la base.
+ * Crea un ingrediente y lleva a su ficha.
  *
- * `kcal_100` no está: es una columna generada por Atwater
- * (4·prot + 4·hc + 9·grasa + 7·alcohol). Mandarla sería inventarse una segunda
- * verdad para el mismo dato, y además la base la rechazaría.
+ * `alta` solo viene cuando el ingrediente entra por un código de barras. Lo que
+ * trae —el código, la energía del envase y los alérgenos declarados— son campos
+ * que el formulario no pide y que **solo** se escriben al crear: ver el
+ * comentario de `AltaEscaneada`.
  */
-function aFila(d: DatosIngrediente) {
-  const nombre = d.nombre.trim();
-  return {
-    nombre,
-    nombre_norm: normalizar(nombre),
-    grupo: d.grupo?.trim() || null,
-    estado: d.estado,
-    prot_100: d.prot_100,
-    hc_100: d.hc_100,
-    grasa_100: d.grasa_100,
-    fibra_100: d.fibra_100,
-    alcohol_100: d.alcohol_100,
-    agua_100: d.agua_100,
-    ags_100: d.ags_100,
-    sodio_100: d.sodio_100,
-    porcion_comestible: d.porcion_comestible,
-    notas: d.notas?.trim() || null,
-  };
+export async function crearIngrediente(datos: DatosIngrediente, alta?: AltaEscaneada) {
+  const id = await insertarIngrediente(datos, alta);
+  revalidatePath("/ingredientes");
+  redirect(`/ingredientes/${id}`);
 }
 
-export async function crearIngrediente(datos: DatosIngrediente) {
+/**
+ * Lo mismo, pero devolviendo el identificador en vez de navegar.
+ *
+ * Existe por el escaneo desde dentro de una dieta: allí el alta es un paso
+ * intermedio —lo que se quiere es añadir el alimento a la comida—, y una
+ * redirección sacaría al usuario de la dieta que está montando.
+ */
+export async function crearIngredienteYDevolver(
+  datos: DatosIngrediente,
+  alta?: AltaEscaneada,
+): Promise<{ id: number; nombre: string }> {
+  const id = await insertarIngrediente(datos, alta);
+  revalidatePath("/ingredientes");
+  return { id, nombre: datos.nombre.trim() };
+}
+
+/** El insert de verdad. No exportada: `"use server"` no lo permitiría igual. */
+async function insertarIngrediente(
+  datos: DatosIngrediente,
+  alta?: AltaEscaneada,
+): Promise<number> {
   if (!datos.nombre.trim()) throw new Error("El ingrediente necesita un nombre.");
 
   const supabase = await clienteServidor();
@@ -49,26 +57,79 @@ export async function crearIngrediente(datos: DatosIngrediente) {
   const { data, error } = await supabase
     .from("ingredientes")
     .insert({
-      ...aFila(datos),
+      ...filaIngrediente(datos),
       // Con dueño: lo ve quien lo crea y nadie más. Lo exige el RLS de inserción.
       owner_id: user.id,
-      origen: "propio",
+      origen: alta ? ORIGEN_OFF : "propio",
+      codigo_barras: alta?.codigo_barras ?? null,
+      kcal_ref: alta?.kcal_ref ?? null,
       // `preferente` es lo que mira el catálogo y el buscador. Por defecto la
       // base lo deja en false —tiene sentido para BEDCA, donde hay varias fichas
       // del mismo alimento y solo una es la buena—, pero un ingrediente escrito
       // a mano no compite con ninguna otra ficha: si no fuera preferente, se
       // guardaría y no aparecería en ninguna parte.
       preferente: true,
-      revisado: true,
-      editado_a_mano: true,
+      // Escrito a mano es dato revisado; traído de Open Food Facts, no. Ahí el
+      // dato lo ha tecleado un desconocido a partir de una foto de la etiqueta,
+      // y hasta que alguien lo mire sigue siendo eso.
+      revisado: !alta,
+      editado_a_mano: !alta,
     })
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Un código de barras repetido tiene arreglo y merece decirlo así.
+    if (error.code === "23505" && alta)
+      throw new Error(
+        `Ya tienes un ingrediente con el código ${alta.codigo_barras}. Búscalo por su nombre.`,
+      );
+    throw new Error(error.message);
+  }
 
-  revalidatePath("/ingredientes");
-  redirect(`/ingredientes/${data.id}`);
+  const id = Number(data.id);
+
+  // Los alérgenos de la etiqueta, si los hay. Van con `origen = 'declarado'`,
+  // que la derivación no toca: ese script solo borra lo suyo, lo 'derivado'.
+  if (alta) await marcarAlergenosDeclarados(supabase, id, alta);
+
+  return id;
+}
+
+/**
+ * Marca en el ingrediente los alérgenos que declara la etiqueta.
+ *
+ * Las trazas se marcan igual que lo contenido. Es deliberado y es la misma
+ * decisión que ya está tomada en `alergias.md`: avisar de más molesta y avisar
+ * de menos hace daño. Cuáles eran trazas queda escrito en las notas.
+ *
+ * NO marca `alergenos_revisados`: lo dice una etiqueta, no lo ha comprobado
+ * nadie, y la app distingue las dos cosas en todas las pantallas.
+ */
+async function marcarAlergenosDeclarados(
+  supabase: Awaited<ReturnType<typeof clienteServidor>>,
+  ingredienteId: number,
+  alta: AltaEscaneada,
+) {
+  const codigos = [...new Set([...alta.alergenos, ...alta.trazas])];
+  if (!codigos.length) return;
+
+  const { data: catalogo } = await supabase
+    .from("alergenos")
+    .select("id, codigo")
+    .is("owner_id", null)
+    .in("codigo", codigos);
+
+  const ids = ((catalogo ?? []) as { id: number; codigo: string }[]).map((a) => Number(a.id));
+  if (!ids.length) return;
+
+  // Si esto falla, el ingrediente ya está creado y es utilizable: no se tira
+  // el alta por no haber podido marcar un alérgeno. La ficha los deja poner a
+  // mano, y el aviso de «sin revisar» sigue puesto.
+  await supabase.from("ingrediente_alergenos").upsert(
+    ids.map((alergeno_id) => ({ ingrediente_id: ingredienteId, alergeno_id, origen: "declarado" })),
+    { onConflict: "ingrediente_id,alergeno_id", ignoreDuplicates: true },
+  );
 }
 
 /**
@@ -77,6 +138,9 @@ export async function crearIngrediente(datos: DatosIngrediente) {
  * Desde la migración 0006 el RLS deja tocar los de BEDCA. Se marca
  * `editado_a_mano` para que `cargar-ingredientes.mjs` no lo devuelva a su valor
  * original en la siguiente recarga.
+ *
+ * No toca `codigo_barras` ni `kcal_ref`: el formulario no los pide, y escribir
+ * aquí lo que no se ha preguntado es como borrarlo.
  */
 export async function actualizarIngrediente(id: number, datos: DatosIngrediente) {
   if (!datos.nombre.trim()) throw new Error("El ingrediente necesita un nombre.");
@@ -84,7 +148,7 @@ export async function actualizarIngrediente(id: number, datos: DatosIngrediente)
   const supabase = await clienteServidor();
   const { data, error } = await supabase
     .from("ingredientes")
-    .update({ ...aFila(datos), editado_a_mano: true })
+    .update({ ...filaIngrediente(datos), editado_a_mano: true })
     .eq("id", id)
     .select("id");
 

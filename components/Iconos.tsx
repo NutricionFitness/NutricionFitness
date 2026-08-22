@@ -1,5 +1,5 @@
 /**
- * Los cuatro iconos de la app, en línea.
+ * Los iconos de la app, en línea.
  *
  * No hay librería de iconos: son cuatro trazos y meter una dependencia entera
  * para esto engorda el paquete que se descarga el navegador sin ganar nada.
@@ -56,6 +56,24 @@ export function IconoCerrar() {
   return (
     <svg {...base} width={14} height={14} strokeWidth={2.2}>
       <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+/**
+ * Barras de anchura desigual, que es lo que hace reconocible un código.
+ *
+ * Con todas las barras iguales parece un ecualizador; el ojo lee «código de
+ * barras» por la irregularidad, no por la cantidad de líneas.
+ */
+export function IconoCodigoBarras() {
+  return (
+    <svg {...base} strokeWidth={1.6}>
+      <path d="M3.5 5v14M6.5 5v14" />
+      <path d="M9.5 5v14" strokeWidth="2.6" />
+      <path d="M13 5v14M15.5 5v14" />
+      <path d="M18.5 5v14" strokeWidth="2.6" />
+      <path d="M21 5v14" />
     </svg>
   );
 }

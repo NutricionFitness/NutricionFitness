@@ -1657,6 +1657,236 @@ button.icono.ayuda-boton[aria-expanded="true"] {
   color: var(--tinta);
 }
 
+/* ============================================ código de barras (fase 14) ===
+
+   El escáner va en un `<dialog>` abierto con `showModal()`. Eso lo pinta en la
+   capa superior del navegador, así que no lo recorta ningún `overflow` ni lo
+   descoloca ningún `transform` de la tarjeta desde la que se abre: el mismo
+   fallo que dejó el buscador de ingredientes sin poder pulsarse en la fase 10.
+   ========================================================================== */
+
+/* `display` va con `[open]`: un `<dialog>` cerrado se oculta desde la hoja del
+   navegador con `display: none`, y una regla de autor sin `[open]` lo dejaría
+   visible siempre. En columna porque en el móvil el visor tiene que estirarse. */
+.escaner[open] {
+  display: flex;
+  flex-direction: column;
+}
+.escaner {
+  width: min(520px, 94vw);
+  max-height: 92vh;
+  padding: 0;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--tinta);
+  box-shadow: var(--sombra-3);
+  overflow: hidden;
+}
+.escaner::backdrop {
+  background: rgba(12, 20, 14, 0.55);
+}
+.escaner > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--linea);
+}
+.escaner > header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.escaner .cerrar {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--suave);
+  border-color: var(--linea);
+}
+
+.escaner .visor {
+  position: relative;
+  background: #0b0d0b;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+}
+.escaner .visor video {
+  width: 100%;
+  height: 100%;
+  /* `cover` y no `contain`: con `contain` quedan dos franjas negras y el código
+     sale más pequeño de lo que cabría, justo lo contrario de lo que hace falta. */
+  object-fit: cover;
+  display: block;
+}
+
+/* La mirilla no recorta el fotograma: el lector barre la franja central, y
+   esto es lo que dice dónde está esa franja. */
+.escaner .mirilla {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  /* Alta fija y no un porcentaje: en una pantalla de móvil, alta y estrecha, un
+     32% arriba y abajo deja un recuadro casi cuadrado, y un recuadro cuadrado
+     invita a encuadrar el envase entero en vez de las barras. */
+  top: 50%;
+  transform: translateY(-50%);
+  height: clamp(110px, 30%, 200px);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--r-s);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
+}
+
+.escaner .capa {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(11, 13, 11, 0.86);
+  color: #f2f5f1;
+  font-size: 14px;
+}
+.escaner .capa .tenue {
+  color: #b9c3ba;
+}
+
+.escaner .pie {
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 10px;
+  /* Con el teclado del móvil abierto el diálogo se queda sin sitio: que sea
+     esta parte la que se desliza y no el visor. */
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.escaner .instruccion {
+  margin: 0;
+  font-size: 13px;
+}
+.escaner .a-mano .fila {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.escaner .a-mano input {
+  flex: 1 1 auto;
+  min-width: 0; /* si no, el input ensancha la fila y desborda el diálogo */
+  font-family: var(--cifras);
+  letter-spacing: 0.04em;
+}
+
+/* --- el bloque de escaneo en el alta de ingrediente --- */
+
+.alta-escaneo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin: 0 0 4px;
+  max-width: 720px;
+  background: var(--panel-2);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+}
+.alta-escaneo p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  max-width: 46ch;
+}
+.alta-escaneo .fila {
+  flex-wrap: wrap;
+}
+
+/* --- la tarjeta de lo que ha traído el escaneo, dentro de una dieta --- */
+
+.propuesta-escaneo {
+  display: grid;
+  gap: 9px;
+  padding: 13px 15px;
+  background: var(--panel-2);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--r-m);
+}
+.propuesta-escaneo .cabeza {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.propuesta-escaneo .cabeza strong {
+  font-size: 15px;
+}
+.propuesta-escaneo .macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--suave);
+}
+.propuesta-escaneo .fila {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.propuesta-escaneo .aviso-caja {
+  margin: 0;
+}
+
+/* --- los avisos del conversor --- */
+
+.avisos-escaneo ul {
+  margin: 5px 0 0;
+  padding-left: 17px;
+  display: grid;
+  gap: 4px;
+}
+.avisos-escaneo li.grave {
+  font-weight: 500;
+}
+
+/* Un botón con icono y texto: el icono no debe empujar al texto. */
+button > svg {
+  flex: none;
+}
+button:has(> svg + span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+@media (max-width: 560px) {
+  .escaner {
+    width: 100vw;
+    max-width: none;
+    max-height: 100vh;
+    height: 100vh;
+    border: 0;
+    border-radius: 0;
+  }
+  .escaner .visor {
+    aspect-ratio: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .escaner .pie {
+    max-height: none;
+    flex: none;
+  }
+  .alta-escaneo {
+    display: grid;
+  }
+}
+
 /* ===================================================== impresión ========= */
 
 @media print {
@@ -1671,6 +1901,8 @@ button.icono.ayuda-boton[aria-expanded="true"] {
      desde el navegador. */
   .alerta-alergia,
   .nota-revision,
+  .escaner,
+  .alta-escaneo,
   .chip.alergia {
     display: none !important;
   }

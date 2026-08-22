@@ -33,6 +33,9 @@ En el **SQL Editor** de Supabase, ejecuta en este orden:
 3. `supabase/migraciones/0003_linaje.sql`
 4. `supabase/migraciones/0004_medidas.sql`
 5. `supabase/migraciones/0005_duplicar.sql`
+6. `supabase/migraciones/0006_editar_catalogo.sql`
+7. `supabase/migraciones/0007_alergenos.sql`
+8. `supabase/migraciones/0008_codigo_barras.sql`
 
 Si ya tenías la base creada de antes, te basta con ejecutar la que falte: cada
 migración es independiente y se puede volver a ejecutar sin romper nada.
@@ -124,13 +127,20 @@ supabase/
   migraciones/0003_linaje.sql           árbol de versiones y totales por comida
   migraciones/0004_medidas.sql          medidas caseras y equivalencias de cocción
   migraciones/0005_duplicar.sql         copiar una dieta como plantilla
+  migraciones/0006_editar_catalogo.sql  poder corregir los ingredientes de BEDCA
+  migraciones/0007_alergenos.sql        los catorce del Anexo II y las alergias
+  migraciones/0008_codigo_barras.sql    código de barras en el ingrediente
   pruebas/                              andamio y pruebas contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
 scripts/cargar-medidas.mjs
+scripts/derivar-alergenos.mjs           deduce alérgenos de LanguaL y del nombre
+scripts/probar-codigo.ts                qué trae Open Food Facts de un código
 lib/
   motor/          el motor de la fase 3, sin tocar
   dominio/        conversión filas ↔ motor, comparador, medidas y sustitución  (82 tests)
+  openfoodfacts/  código de barras → ingrediente, con sus avisos             (51 tests)
+  codigo-barras/  lector de EAN-13 y EAN-8, sin dependencias                 (17 tests)
   supabase/       clientes de navegador y servidor
 app/
   login, cuenta, personas, personas/[id], dietas/[id],

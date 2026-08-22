@@ -21,6 +21,7 @@ export interface FichaCompleta extends DatosIngrediente {
   id: number;
   propio: boolean;
   codigo_bedca: string | null;
+  codigo_barras: string | null;
   origen: string | null;
   kcal_ref: number | null;
   revisado: boolean;
@@ -190,6 +191,15 @@ export default function FichaIngrediente({
                   <td>Código BEDCA</td>
                   <td className="num suave">{ficha.codigo_bedca ?? "—"}</td>
                 </tr>
+                {/* Solo cuando lo hay: el 99% del catálogo viene de BEDCA y no
+                    tiene código de barras, y una fila con un guion en todas las
+                    fichas es ruido. */}
+                {ficha.codigo_barras && (
+                  <tr>
+                    <td>Código de barras</td>
+                    <td className="num suave cifra">{ficha.codigo_barras}</td>
+                  </tr>
+                )}
                 <tr>
                   <td>Última corrección</td>
                   <td className="num suave">

@@ -7,9 +7,12 @@ import {
   ESTADOS,
   ETIQUETA_ESTADO,
   kcalAtwater,
+  type AltaEscaneada,
+  type AvisoEscaneo,
   type DatosIngrediente,
   type Estado,
 } from "@/app/ingredientes/tipos";
+import { AvisosEscaneo } from "./AltaPorCodigo";
 import SelectorGrupoUnico from "./SelectorGrupoUnico";
 
 /**
@@ -71,6 +74,8 @@ export default function FormularioIngrediente({
   grupos,
   inicial,
   id,
+  alta,
+  avisos,
   onCancelar,
   onGuardado,
 }: {
@@ -78,6 +83,14 @@ export default function FormularioIngrediente({
   inicial?: DatosIngrediente;
   /** Si viene, se corrige ese ingrediente; si no, se crea uno nuevo. */
   id?: number;
+  /**
+   * Solo al crear desde un código de barras: el código, la energía del envase
+   * y los alérgenos declarados. Son campos que este formulario no pide y que
+   * viajan aparte para que corregir un ingrediente no los borre.
+   */
+  alta?: AltaEscaneada;
+  /** Lo que el conversor tiene que decir de la ficha que ha traído. */
+  avisos?: AvisoEscaneo[];
   onCancelar?: () => void;
   /** Solo al corregir: crear redirige a la ficha y no vuelve de la acción. */
   onGuardado?: () => void;
@@ -169,7 +182,7 @@ export default function FormularioIngrediente({
           // manera de saber si ha pasado algo. Al cerrarlo se ve la ficha ya
           // con los valores nuevos: la acción ha revalidado esta ruta.
           onGuardado?.();
-        } else await crearIngrediente(datos);
+        } else await crearIngrediente(datos, alta);
       } catch (e) {
         // `redirect()` de Next también viaja como excepción: esa se deja pasar.
         if (e && typeof e === "object" && "digest" in e) throw e;
@@ -202,6 +215,8 @@ export default function FormularioIngrediente({
 
   return (
     <div className="rejilla" style={{ gap: 18, maxWidth: 720 }}>
+      {avisos && <AvisosEscaneo avisos={avisos} />}
+
       <label className="campo">
         <span className="etiqueta">Nombre</span>
         <input
@@ -263,6 +278,19 @@ export default function FormularioIngrediente({
             No se escribe: la calcula la base con Atwater —4·proteínas + 4·hidratos
             + 9·grasa + 7·alcohol—. <strong>La fibra no suma.</strong>
           </p>
+
+          {/* El contraste con lo que dice el envase, en vivo. Es lo que
+              convierte «un dato que ha tecleado un desconocido» en un dato
+              revisable: si al corregir un macro las dos cifras se acercan, el
+              macro estaba mal copiado. */}
+          {alta?.kcal_ref != null && alta.kcal_ref > 0 && (
+            <p className={Math.abs(kcal - alta.kcal_ref) / alta.kcal_ref > 0.1 ? "aviso" : "tenue"}>
+              El envase declara <strong className="cifra">{Math.round(alta.kcal_ref)} kcal</strong>
+              {Math.abs(kcal - alta.kcal_ref) / alta.kcal_ref > 0.1
+                ? `, un ${Math.round(Math.abs(kcal - alta.kcal_ref) / alta.kcal_ref * 100)}% de diferencia. Suele ser un macronutriente mal copiado: corrígelo y mira cómo se acercan.`
+                : ", que cuadra con lo calculado."}
+            </p>
+          )}
         </div>
       </div>
 
