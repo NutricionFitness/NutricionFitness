@@ -7,7 +7,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * Va aquí y no en cada página porque olvidarse en una sola página es todo lo que
  * hace falta para dejar un agujero.
  */
-const PUBLICAS = ["/login", "/auth"];
+// `/escanear` es la página a la que lleva el QR: la abre la cámara del móvil y
+// tiene que funcionar sin sesión, que es justo lo que la hace útil. Lo que se
+// puede hacer desde ahí lo limitan las tres funciones de la migración 0009, no
+// esta lista: la página en sí no lee ni escribe nada por su cuenta.
+const PUBLICAS = ["/login", "/auth", "/escanear"];
 
 export async function middleware(peticion: NextRequest) {
   let respuesta = NextResponse.next({ request: peticion });

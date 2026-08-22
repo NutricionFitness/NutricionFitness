@@ -1938,6 +1938,220 @@ button:has(> svg + span) {
   }
 }
 
+/* ================================== escanear con otro dispositivo (f.15) ===
+
+   Tres piezas: la pregunta de con qué cámara, el panel del QR en el ordenador
+   y la pantalla completa del móvil. Las tres reutilizan los tokens del tema;
+   lo único que se sale es el QR, que va en negro sobre blanco pase lo que pase
+   porque un lector busca contraste, no elegancia.
+   ========================================================================== */
+
+.elegir-camara[open] {
+  display: grid;
+}
+.elegir-camara {
+  width: min(430px, 92vw);
+  gap: 12px;
+  padding: 20px 22px 18px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--tinta);
+  box-shadow: var(--sombra-3);
+  justify-items: start;
+}
+.elegir-camara::backdrop {
+  background: rgba(12, 20, 14, 0.55);
+}
+.elegir-camara h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+}
+.elegir-camara p {
+  margin: 0;
+  font-size: 13.5px;
+}
+.elegir-camara .opciones {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+/* --- el panel del QR, en el ordenador --- */
+
+.panel-remoto {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 14px 16px;
+  max-width: 420px;
+  background: var(--panel-2);
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--r-m);
+}
+.panel-remoto .cabeza {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.panel-remoto .cabeza .cancelar {
+  margin-left: auto;
+  padding: 5px 11px;
+  font-size: 13px;
+}
+.panel-remoto p {
+  margin: 0;
+  font-size: 13px;
+}
+.panel-remoto .cuadro-qr {
+  align-self: center;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: var(--r-s);
+  line-height: 0;
+}
+.panel-remoto .qr {
+  display: block;
+}
+.panel-remoto .enlace-corto {
+  word-break: break-all;
+  font-size: 12px;
+}
+.panel-remoto .vinculado {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13.5px;
+}
+.panel-remoto .vinculado .punto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bien);
+  /* Late despacio: dice «esto sigue vivo» sin llamar la atención. Y se apaga
+     para quien haya pedido menos movimiento. */
+  animation: late 2s ease-in-out infinite;
+}
+@keyframes late {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-remoto .vinculado .punto { animation: none; }
+}
+.panel-remoto .caduca {
+  font-size: 12px;
+}
+
+/* --- la pantalla del móvil --- */
+
+.remoto {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--fondo);
+}
+.remoto .visor {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #0b0d0b;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.remoto .visor video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.remoto .mirilla {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: clamp(110px, 30%, 200px);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: var(--r-s);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.28);
+}
+.remoto .capa {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(11, 13, 11, 0.86);
+  color: #f2f5f1;
+  font-size: 14px;
+}
+.remoto .capa .tenue {
+  color: #b9c3ba;
+}
+.remoto .pie {
+  flex: none;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  background: var(--panel);
+  border-top: 1px solid var(--linea);
+}
+.remoto .instruccion {
+  margin: 0;
+  font-size: 14px;
+}
+.remoto .enviado {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--acento-suave);
+  border-radius: var(--r-m);
+}
+.remoto .enviado strong {
+  color: var(--bien);
+  font-size: 15px;
+}
+.remoto .enviado .cifra {
+  font-size: 19px;
+  letter-spacing: 0.06em;
+}
+.remoto .enviado .tenue {
+  font-size: 13px;
+}
+
+/* Fin del recorrido en el móvil: solo un cartel, sin nada que tocar. */
+.remoto.acabado {
+  place-items: center;
+  padding: 24px;
+}
+.remoto .cartel {
+  display: grid;
+  gap: 8px;
+  max-width: 34ch;
+  text-align: center;
+  margin: auto;
+}
+.remoto .cartel p {
+  margin: 0;
+  font-size: 14px;
+}
+.remoto .cartel .grande {
+  font-size: 20px;
+  font-weight: 600;
+}
+
 /* ===================================================== impresión ========= */
 
 @media print {
@@ -1954,6 +2168,9 @@ button:has(> svg + span) {
   .nota-revision,
   .escaner,
   .alta-escaneo,
+  .elegir-camara,
+  .panel-remoto,
+  .remoto,
   .chip.alergia {
     display: none !important;
   }
