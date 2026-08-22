@@ -72,12 +72,15 @@ export default function FormularioIngrediente({
   inicial,
   id,
   onCancelar,
+  onGuardado,
 }: {
   grupos: string[];
   inicial?: DatosIngrediente;
   /** Si viene, se corrige ese ingrediente; si no, se crea uno nuevo. */
   id?: number;
   onCancelar?: () => void;
+  /** Solo al corregir: crear redirige a la ficha y no vuelve de la acción. */
+  onGuardado?: () => void;
 }) {
   const [c, setC] = useState<Campos>(() =>
     inicial
@@ -160,8 +163,13 @@ export default function FormularioIngrediente({
 
     iniciar(async () => {
       try {
-        if (id) await actualizarIngrediente(id, datos);
-        else await crearIngrediente(datos);
+        if (id) {
+          await actualizarIngrediente(id, datos);
+          // Sin esto el formulario se queda abierto tras guardar y no hay
+          // manera de saber si ha pasado algo. Al cerrarlo se ve la ficha ya
+          // con los valores nuevos: la acción ha revalidado esta ruta.
+          onGuardado?.();
+        } else await crearIngrediente(datos);
       } catch (e) {
         // `redirect()` de Next también viaja como excepción: esa se deja pasar.
         if (e && typeof e === "object" && "digest" in e) throw e;

@@ -1215,6 +1215,21 @@ textarea {
   gap: 2px;
   justify-content: flex-end;
 }
+/* La vuelta al sitio del que se viene, al final de una ficha larga. */
+.volver-abajo {
+  margin: 26px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--linea);
+  font-size: 14px;
+}
+.volver-abajo a {
+  color: var(--tenue);
+  text-decoration: none;
+}
+.volver-abajo a:hover {
+  color: var(--tinta);
+  text-decoration: underline;
+}
 .medida {
   font-size: 11.5px;
   color: var(--tenue);

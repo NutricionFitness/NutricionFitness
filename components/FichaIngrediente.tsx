@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import {
@@ -35,11 +36,14 @@ export default function FichaIngrediente({
   ficha,
   grupos,
   alergenos,
+  volver,
 }: {
   ficha: FichaCompleta;
   grupos: string[];
   /** La tarjeta de alérgenos, que se monta en el servidor con su catálogo. */
   alergenos?: React.ReactNode;
+  /** La dieta desde la que se ha llegado, si se ha llegado desde una. */
+  volver?: { href: string; nombre: string } | null;
 }) {
   const [editando, setEditando] = useState(false);
 
@@ -61,6 +65,7 @@ export default function FichaIngrediente({
           id={ficha.id}
           inicial={ficha}
           onCancelar={() => setEditando(false)}
+          onGuardado={() => setEditando(false)}
         />
       </>
     );
@@ -223,6 +228,15 @@ export default function FichaIngrediente({
           )}
         </div>
       </div>
+
+      {/* Se llega aquí desde una dieta para mirar o corregir algo, y lo que toca
+          después es seguir con la dieta. Arriba están las migas, pero la ficha
+          es larga: al terminar con los alérgenos se acaba abajo del todo. */}
+      {volver && (
+        <p className="volver-abajo">
+          <Link href={volver.href}>← Volver a {volver.nombre}</Link>
+        </p>
+      )}
     </>
   );
 }

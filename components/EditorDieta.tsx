@@ -570,7 +570,7 @@ function EditorCompleto({
                       <tr key={c.id}>
                         <td>
                           <Link
-                            href={`/ingredientes/${c.ingrediente_id}`}
+                            href={`/ingredientes/${c.ingrediente_id}?dieta=${filas.id}`}
                             className="nombre-ingrediente"
                             title="Ver o corregir su ficha"
                           >
