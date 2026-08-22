@@ -19,6 +19,7 @@ import BuscadorIngrediente from "./BuscadorIngrediente";
 import PanelSustitucion from "./PanelSustitucion";
 import DietaVacia from "./DietaVacia";
 import { IconoAyuda } from "./Iconos";
+import type { Alergeno, AlergenosIngrediente } from "@/app/alergenos/consultas";
 import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
 import {
   conversionDisponible,
@@ -49,9 +50,15 @@ const nombreModo = (m: Modo) => {
 function EditorCompleto({
   filas,
   equivalencias,
+  alergias,
+  alergenos,
+  persona,
 }: {
   filas: DietaCompleta;
   equivalencias: Equivalencia[];
+  alergias: Alergeno[];
+  alergenos: Record<number, AlergenosIngrediente>;
+  persona: string | null;
 }) {
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
@@ -193,6 +200,34 @@ function EditorCompleto({
     pctActual.hc,
   )}%, grasa ${Math.round(pctActual.grasa)}%`;
 
+  // --- alergias -----------------------------------------------------------
+  // Se cruza lo que lleva cada ingrediente con lo que le sienta mal a esta
+  // persona. `choques` guarda, por componente, los nombres de los alérgenos, que
+  // es lo que hay que poder leer sin abrir nada.
+  const nombreAlergeno = new Map(alergias.map((a) => [a.id, a.nombre]));
+  const idsAlergia = new Set(alergias.map((a) => a.id));
+  const choques = new Map<string, string[]>();
+  let sinRevisar = 0;
+
+  for (const m of comidas)
+    for (const c of m.componentes ?? []) {
+      const ficha = alergenos[Number(c.ingrediente_id)];
+      if (!ficha) continue;
+      if (!ficha.revisado) sinRevisar++;
+      const coincide = ficha.alergenos
+        .filter((id) => idsAlergia.has(id))
+        .map((id) => nombreAlergeno.get(id))
+        .filter((n): n is string => !!n);
+      if (coincide.length) choques.set(c.id, coincide);
+    }
+
+  const alergenosEnJuego = [...new Set([...choques.values()].flat())].sort((a, b) =>
+    a.localeCompare(b, "es"),
+  );
+  // «leche, huevos y frutos de cáscara», no «leche, huevos, frutos de cáscara».
+  const enLista = (xs: string[]) =>
+    xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} y ${xs.at(-1)}`;
+
   return (
     <>
       {/* ------------------------------------------- la barra que no se va */}
@@ -234,6 +269,31 @@ function EditorCompleto({
         </button>
       </div>
 
+      {choques.size > 0 && (
+        <div className="alerta-alergia" role="alert">
+          <strong>POSIBLE ALERGIA DETECTADA: REVISAR DIETA</strong>
+          <p>
+            {choques.size === 1
+              ? "Un ingrediente de esta dieta lleva "
+              : `${choques.size} ingredientes de esta dieta llevan `}
+            <strong>{enLista(alergenosEnJuego)}</strong>
+            {persona ? `, y ${persona} lo tiene declarado como alergia.` : "."} Va
+            {choques.size === 1 ? "" : "n"} señalado{choques.size === 1 ? "" : "s"} abajo,
+            en su fila.
+          </p>
+        </div>
+      )}
+
+      {alergias.length > 0 && sinRevisar > 0 && (
+        <p className="nota-revision">
+          {sinRevisar === 1
+            ? "1 ingrediente de esta dieta no tiene los alérgenos revisados"
+            : `${sinRevisar} ingredientes de esta dieta no tienen los alérgenos revisados`}
+          : lo que se sabe de ellos está deducido de la fuente y del nombre. Sin
+          revisar no es lo mismo que sin alérgenos.
+        </p>
+      )}
+
       {desajustes.map((d) => (
         <p key={d.estado} className="aviso-caja">
           <span>
@@ -270,6 +330,7 @@ function EditorCompleto({
                   Sin componentes.
                 </p>
                 <BuscadorIngrediente
+                  alergias={idsAlergia}
                   onElegir={(ingredienteId, gramos) =>
                     iniciar(() =>
                       anadirComponente(comida.id, ingredienteId, gramos, filas.id).then(() =>
@@ -424,6 +485,15 @@ function EditorCompleto({
                       <tr key={c.id}>
                         <td>
                           {c.ingredientes.nombre}
+                          {choques.has(c.id) && (
+                            <span
+                              className="chip alergia fuerte"
+                              style={{ marginLeft: 8 }}
+                              title={`Lleva ${choques.get(c.id)!.join(", ")}`}
+                            >
+                              POSIBLE ALERGIA
+                            </span>
+                          )}
                           {c.ingredientes.estado !== "desconocido" && (
                             <span className="chip" style={{ marginLeft: 8 }}>
                               {c.ingredientes.estado}
@@ -639,6 +709,7 @@ function EditorCompleto({
                         grupo={c.ingredientes.grupo}
                         gramos={Number(c.gramos)}
                         dietaId={filas.id}
+                        alergias={idsAlergia}
                         objetivo={objetivoSustitucion}
                         onCerrar={() => setSustituyendo(null)}
                         onHecho={() => {
@@ -653,6 +724,7 @@ function EditorCompleto({
 
             <footer>
               <BuscadorIngrediente
+                alergias={idsAlergia}
                 onElegir={(ingredienteId, gramos) =>
                   iniciar(() =>
                     anadirComponente(comida.id, ingredienteId, gramos, filas.id).then(() =>
@@ -914,13 +986,25 @@ function EditorCompleto({
 export default function EditorDieta({
   dieta: filas,
   equivalencias = [],
+  alergias = [],
+  alergenos = {},
+  persona = null,
 }: {
   dieta: DietaCompleta;
   equivalencias?: Equivalencia[];
+  alergias?: Alergeno[];
+  alergenos?: Record<number, AlergenosIngrediente>;
+  persona?: string | null;
 }) {
   return contarComponentes(filas) === 0 ? (
     <DietaVacia filas={filas} />
   ) : (
-    <EditorCompleto filas={filas} equivalencias={equivalencias} />
+    <EditorCompleto
+      filas={filas}
+      equivalencias={equivalencias}
+      alergias={alergias}
+      alergenos={alergenos}
+      persona={persona}
+    />
   );
 }

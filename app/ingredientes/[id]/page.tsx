@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import AlergenosIngrediente from "@/components/AlergenosIngrediente";
 import FichaIngrediente, { type FichaCompleta } from "@/components/FichaIngrediente";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { catalogoAlergenos } from "@/app/alergenos/consultas";
 import { gruposDisponibles } from "../grupos";
 import type { Estado } from "../tipos";
 
@@ -19,19 +21,21 @@ export default async function Ingrediente({
 
   const supabase = await clienteServidor();
 
-  const [{ data }, grupos] = await Promise.all([
+  const [{ data }, grupos, catalogo] = await Promise.all([
     supabase
       .from("ingredientes")
       .select(
         `id, owner_id, nombre, grupo, estado, codigo_bedca, origen, notas,
          prot_100, hc_100, grasa_100, fibra_100, alcohol_100, ags_100, agua_100,
          sodio_100, kcal_ref, porcion_comestible, revisado, editado_a_mano,
-         actualizado_en,
-         medidas_caseras ( id, nombre, gramos )`,
+         alergenos_revisados, actualizado_en,
+         medidas_caseras ( id, nombre, gramos ),
+         ingrediente_alergenos ( alergeno_id )`,
       )
       .eq("id", numero)
       .single(),
     gruposDisponibles(),
+    catalogoAlergenos(),
   ]);
 
   if (!data) notFound();
@@ -65,12 +69,27 @@ export default async function Ingrediente({
       .sort((a, b) => a.gramos - b.gramos),
   };
 
+  const puestos = (
+    (data.ingrediente_alergenos ?? []) as { alergeno_id: number }[]
+  ).map((x) => Number(x.alergeno_id));
+
   return (
     <>
       <p className="migas">
         <Link href="/ingredientes">← Ingredientes</Link>
       </p>
-      <FichaIngrediente ficha={ficha} grupos={grupos} />
+      <FichaIngrediente
+        ficha={ficha}
+        grupos={grupos}
+        alergenos={
+          <AlergenosIngrediente
+            ingredienteId={ficha.id}
+            catalogo={catalogo}
+            puestos={puestos}
+            revisado={Boolean(data.alergenos_revisados)}
+          />
+        }
+      />
     </>
   );
 }

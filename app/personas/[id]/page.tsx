@@ -2,8 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import AccionesDieta from "@/components/AccionesDieta";
+import AlergiasPersona from "@/components/AlergiasPersona";
 import CabeceraPersona from "@/components/CabeceraPersona";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import {
+  alergiasDePersona,
+  catalogoAlergenos,
+  dietasConAlergeno,
+} from "@/app/alergenos/consultas";
 import { crearDieta } from "../acciones";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +32,18 @@ export default async function Persona({ params }: { params: Promise<{ id: string
     .from("v_dietas_totales").select("dieta_id, kcal, prot, hc, grasa");
   const porDieta = new Map((totales ?? []).map((t) => [t.dieta_id as string, t]));
 
+  const [catalogo, alergias] = await Promise.all([
+    catalogoAlergenos(),
+    alergiasDePersona(id),
+  ]);
+
+  // Qué dietas de la lista chocan con sus alergias, para no tener que entrar en
+  // cada una a comprobarlo.
+  const conAlergeno = await dietasConAlergeno(
+    (dietas ?? []).map((d) => d.id as string),
+    alergias.map((a) => a.id),
+  );
+
   return (
     <>
       <p className="migas"><Link href="/personas">← Personas</Link></p>
@@ -37,6 +55,14 @@ export default async function Persona({ params }: { params: Promise<{ id: string
         }}
         nDietas={dietas?.length ?? 0}
       />
+
+      <div style={{ marginTop: 18 }}>
+        <AlergiasPersona
+          personaId={persona.id as string}
+          catalogo={catalogo}
+          alergias={alergias}
+        />
+      </div>
 
       <form action={crearDieta} className="fila" style={{ margin: "20px 0" }}>
         <input type="hidden" name="persona_id" value={persona.id} />
@@ -69,6 +95,15 @@ export default async function Persona({ params }: { params: Promise<{ id: string
                   <td>
                     <Link href={`/dietas/${d.id}`}>{d.nombre}</Link>
                     {d.dieta_padre_id && <span className="chip" style={{ marginLeft: 8 }}>ajuste</span>}
+                    {conAlergeno.has(d.id as string) && (
+                      <span
+                        className="chip alergia"
+                        style={{ marginLeft: 8 }}
+                        title="Lleva algún ingrediente con un alérgeno de esta persona"
+                      >
+                        posible alergia
+                      </span>
+                    )}
                   </td>
                   <td className="num">{kcal ? Math.round(kcal) : "—"}</td>
                   <td className="num suave">

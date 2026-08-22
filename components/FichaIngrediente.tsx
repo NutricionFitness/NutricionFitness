@@ -34,9 +34,12 @@ const n2 = (v: number | null) =>
 export default function FichaIngrediente({
   ficha,
   grupos,
+  alergenos,
 }: {
   ficha: FichaCompleta;
   grupos: string[];
+  /** La tarjeta de alérgenos, que se monta en el servidor con su catálogo. */
+  alergenos?: React.ReactNode;
 }) {
   const [editando, setEditando] = useState(false);
 
@@ -141,6 +144,8 @@ export default function FichaIngrediente({
         </div>
 
         <div className="rejilla" style={{ gap: 14 }}>
+          {alergenos}
+
           <div className="tarjeta">
             <h2 style={{ margin: "0 0 12px", fontSize: 14 }}>La ficha</h2>
             <table className="datos">

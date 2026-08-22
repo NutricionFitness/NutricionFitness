@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import AsignarEnBloque from "@/components/AsignarEnBloque";
 import SelectorGrupos from "@/components/SelectorGrupos";
 import SelectorPorPagina from "@/components/SelectorPorPagina";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { catalogoAlergenos } from "@/app/alergenos/consultas";
 import { gruposDisponibles } from "./grupos";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +82,10 @@ export default async function Ingredientes({
 
   const supabase = await clienteServidor();
 
-  const disponibles = await gruposDisponibles();
+  const [disponibles, catalogo] = await Promise.all([
+    gruposDisponibles(),
+    catalogoAlergenos(),
+  ]);
 
   let consulta = supabase
     .from("ingredientes")
@@ -240,6 +245,12 @@ export default async function Ingredientes({
               </nav>
             )}
           </div>
+
+          <AsignarEnBloque
+            catalogo={catalogo}
+            filtro={{ q, grupos }}
+            total={total}
+          />
         </>
       )}
     </>

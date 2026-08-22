@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import CabeceraDieta from "@/components/CabeceraDieta";
 import EditorDieta from "@/components/EditorDieta";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { alergenosDeIngredientes, alergiasDePersona } from "@/app/alergenos/consultas";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,13 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
   const { data: linaje } = await supabase.rpc("linaje_dieta", { p_dieta_id: id });
   const nVersiones = Array.isArray(linaje) ? linaje.length : 1;
 
+  // Las alergias van en consulta aparte y no colgando de la dieta: así el tipo
+  // del dominio se queda como está y el motor no se entera de que existen.
+  const [alergias, alergenos] = await Promise.all([
+    persona ? alergiasDePersona(persona.id) : Promise.resolve([]),
+    alergenosDeIngredientes(idsIngredientes),
+  ]);
+
   return (
     <>
       <p className="migas">
@@ -83,6 +91,9 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
       <EditorDieta
         dieta={data as unknown as DietaCompleta}
         equivalencias={equivalencias ?? []}
+        alergias={alergias}
+        alergenos={alergenos}
+        persona={persona?.nombre ?? null}
       />
     </>
   );

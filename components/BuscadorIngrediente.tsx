@@ -12,6 +12,7 @@ interface Sugerencia {
   kcal_100: number;
   estado: string;
   medidas_caseras: Medida[] | null;
+  ingrediente_alergenos: { alergeno_id: number }[] | null;
 }
 
 /** Quita tildes y baja a minúsculas, igual que la columna `nombre_norm`. */
@@ -28,9 +29,12 @@ const normalizar = (s: string) =>
 export default function BuscadorIngrediente({
   onElegir,
   autoFocus = false,
+  alergias,
 }: {
   onElegir: (ingredienteId: number, gramos: number) => void;
   autoFocus?: boolean;
+  /** Los alérgenos de la persona de esta dieta, para avisar ANTES de añadirlo. */
+  alergias?: Set<number>;
 }) {
   const [texto, setTexto] = useState("");
   const [opciones, setOpciones] = useState<Sugerencia[]>([]);
@@ -53,7 +57,11 @@ export default function BuscadorIngrediente({
       const supabase = clienteNavegador();
       const { data } = await supabase
         .from("ingredientes")
-        .select("id, nombre, grupo, kcal_100, estado, medidas_caseras(id, nombre, gramos, owner_id)")
+        .select(
+          "id, nombre, grupo, kcal_100, estado, " +
+            "medidas_caseras(id, nombre, gramos, owner_id), " +
+            "ingrediente_alergenos(alergeno_id)",
+        )
         .ilike("nombre_norm", `%${q}%`)
         .eq("preferente", true)
         .order("nombre")
@@ -85,6 +93,11 @@ export default function BuscadorIngrediente({
     setElegido(null);
   }
 
+  /** ¿Este ingrediente lleva algo a lo que la persona es alérgica? */
+  const choca = (o: Sugerencia) =>
+    Boolean(alergias?.size) &&
+    (o.ingrediente_alergenos ?? []).some((a) => alergias!.has(Number(a.alergeno_id)));
+
   // ---------------------------------------------- paso 2: cuánto
   if (elegido) {
     const medidas = elegido.medidas_caseras ?? [];
@@ -93,6 +106,9 @@ export default function BuscadorIngrediente({
     return (
       <div className="buscador">
         <strong style={{ fontSize: 14 }}>{elegido.nombre}</strong>
+        {choca(elegido) && (
+          <span className="chip alergia fuerte">POSIBLE ALERGIA</span>
+        )}
         <input
           type="number"
           min={0}
@@ -153,6 +169,11 @@ export default function BuscadorIngrediente({
                   onClick={() => elegir(o)}
                 >
                   {o.nombre}
+                  {choca(o) && (
+                    <span className="chip alergia fuerte" style={{ marginLeft: 8 }}>
+                      POSIBLE ALERGIA
+                    </span>
+                  )}
                   <small className="tenue">
                     {" · "}
                     {Math.round(Number(o.kcal_100))} kcal/100 g

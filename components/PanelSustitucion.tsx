@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { buscarSustitutos, cambiarIngrediente } from "@/app/dietas/[id]/acciones";
+import { clienteNavegador } from "@/lib/supabase/cliente";
 import type { Macros, Sustitucion } from "@/lib/dominio/sustituir";
 
 /**
@@ -20,6 +21,7 @@ export default function PanelSustitucion({
   grupo,
   gramos,
   dietaId,
+  alergias,
   objetivo,
   onCerrar,
   onHecho,
@@ -30,6 +32,8 @@ export default function PanelSustitucion({
   grupo: string | null;
   gramos: number;
   dietaId: string;
+  /** Los alérgenos de la persona de esta dieta. */
+  alergias?: Set<number>;
   /** Si viene, se buscan los cambios que más acercan a ese reparto. */
   objetivo?: { macrosDieta: Macros; energiaDieta: number; objetivoPct: Partial<Macros> };
   onCerrar: () => void;
@@ -38,6 +42,7 @@ export default function PanelSustitucion({
   const [soloMismoGrupo, setSoloMismoGrupo] = useState(true);
   const [dirigido, setDirigido] = useState(Boolean(objetivo));
   const [propuestas, setPropuestas] = useState<Sustitucion[] | null>(null);
+  const [conAlergeno, setConAlergeno] = useState<Set<number>>(new Set());
   const [pendiente, iniciar] = useTransition();
 
   useEffect(() => {
@@ -49,13 +54,32 @@ export default function PanelSustitucion({
       grupo,
       soloMismoGrupo,
       ...(dirigido && objetivo ? objetivo : {}),
-    }).then((r) => {
-      if (vigente) setPropuestas(r);
+    }).then(async (r) => {
+      if (!vigente) return;
+      setPropuestas(r);
+      setConAlergeno(new Set());
+
+      // Los alérgenos de los candidatos se piden aparte: así `buscarSustitutos`
+      // sigue siendo lo que era y el dominio no se entera de las alergias.
+      if (!alergias?.size || !r.length) return;
+      const { data } = await clienteNavegador()
+        .from("ingrediente_alergenos")
+        .select("ingrediente_id, alergeno_id")
+        .in("ingrediente_id", r.map((s) => s.candidato.id))
+        .in("alergeno_id", [...alergias]);
+      if (!vigente) return;
+      setConAlergeno(
+        new Set(
+          ((data ?? []) as { ingrediente_id: number }[]).map((f) =>
+            Number(f.ingrediente_id),
+          ),
+        ),
+      );
     });
     return () => {
       vigente = false;
     };
-  }, [ingredienteId, gramos, grupo, soloMismoGrupo, dirigido, objetivo]);
+  }, [ingredienteId, gramos, grupo, soloMismoGrupo, dirigido, objetivo, alergias]);
 
   function aplicar(s: Sustitucion) {
     iniciar(() =>
@@ -122,6 +146,11 @@ export default function PanelSustitucion({
                 <tr key={s.candidato.id}>
                   <td>
                     {s.candidato.nombre}
+                    {conAlergeno.has(s.candidato.id) && (
+                      <span className="chip alergia fuerte" style={{ marginLeft: 6 }}>
+                        POSIBLE ALERGIA
+                      </span>
+                    )}
                     {s.candidato.estado !== "desconocido" && (
                       <span className="chip" style={{ marginLeft: 6 }}>{s.candidato.estado}</span>
                     )}

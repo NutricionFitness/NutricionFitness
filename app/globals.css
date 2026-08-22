@@ -37,6 +37,7 @@
   --bien: #1e7a4d;
   --peligro: #a3312c;
   --peligro-hover: #8d2925;
+  --peligro-suave: #fceceb;
 
   /* --- macronutrientes: misma paleta que la hoja impresa --- */
   --m-prot: #2a78d6;
@@ -77,6 +78,7 @@
     --bien: #4ca97a;
     --peligro: #d97066;
     --peligro-hover: #e58479;
+    --peligro-suave: #2c1614;
 
     --m-prot: #5b9ad1;
     --m-hc: #ef8a5e;
@@ -109,6 +111,7 @@
   --bien: #4ca97a;
   --peligro: #d97066;
   --peligro-hover: #e58479;
+  --peligro-suave: #2c1614;
 
   --m-prot: #5b9ad1;
   --m-hc: #ef8a5e;
@@ -606,6 +609,98 @@ tr.total td {
 }
 .listado tr:last-child td {
   border-bottom: none;
+}
+
+/* ====================================================== alergias ======== */
+
+/* El aviso que hay que ver aunque no se esté buscando. Rojo, con marco, y
+   pegado debajo de la barra de la dieta: si hay que revisar algo, se revisa
+   antes de seguir tocando gramos. */
+.alerta-alergia {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 14px;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--peligro) 45%, transparent);
+  border-left: 4px solid var(--peligro);
+  border-radius: var(--r-m);
+  background: var(--peligro-suave);
+  color: var(--peligro);
+}
+.alerta-alergia strong {
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.alerta-alergia p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* «Sin revisar» no es «sin alérgenos», y por eso se dice, pero en gris: es un
+   recordatorio, no una alarma. Si avisara en rojo, saldría en casi todas las
+   dietas y se acabaría ignorando el rojo de verdad. */
+.nota-revision {
+  margin: 0 0 14px;
+  padding: 9px 13px;
+  border-radius: var(--r-s);
+  background: var(--panel-2);
+  color: var(--tenue);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.chip.alergia {
+  background: var(--peligro-suave);
+  border-color: color-mix(in srgb, var(--peligro) 35%, transparent);
+  color: var(--peligro);
+  gap: 3px;
+  padding: 1px 4px 1px 9px;
+}
+.chip.alergia:not(:has(button)) {
+  padding: 1px 9px;
+}
+.chip.alergia button {
+  border: 0;
+  background: none;
+  padding: 0 3px;
+  margin: 0;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 11px;
+  line-height: 1;
+}
+.chip.alergia button:hover:not(:disabled) {
+  background: none;
+  border-color: transparent;
+  opacity: 1;
+}
+/* En la fila de un ingrediente hay que verlo de lejos. */
+.chip.alergia.fuerte {
+  background: var(--peligro);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  padding: 1px 8px;
+}
+
+.alergias h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.sin-revisar {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: var(--r-s);
+  background: var(--panel-2);
+  color: var(--suave);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.sin-revisar strong {
+  color: var(--tinta);
 }
 
 /* ===================================================== paginación ======== */
@@ -1483,7 +1578,14 @@ button.icono.ayuda-boton[aria-expanded="true"] {
   .no-imprimir,
   .velo,
   .cajon,
-  .barra-dieta {
+  .barra-dieta,
+  /* La hoja para imprimir es la dieta, no el cuaderno de trabajo: los avisos de
+     alergia no salen en el papel que se lleva el cliente. La hoja se monta con
+     otro componente y no los pinta nunca, pero por si alguien imprime el editor
+     desde el navegador. */
+  .alerta-alergia,
+  .nota-revision,
+  .chip.alergia {
     display: none !important;
   }
   main {
