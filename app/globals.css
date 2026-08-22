@@ -1350,30 +1350,70 @@ textarea {
   line-height: 1.45;
 }
 
-/* Un ejemplo con números de verdad vale más que otro párrafo de teoría. */
-.ejemplo {
-  margin: 2px 0 0;
-  padding: 9px 11px;
-  list-style: none;
+
+/* Los tres porcentajes del reparto que se pide. Caben en una línea porque son
+   tres números cortos, y así se ve la suma de un vistazo. */
+.reparto-pedido {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 2px;
+}
+.reparto-pedido label {
   display: grid;
   gap: 4px;
+  min-width: 0;
+}
+.suma-ok,
+.suma-mal {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.suma-ok {
+  color: var(--tenue);
+}
+.suma-mal {
+  color: var(--aviso);
+}
+
+/* Dos o tres opciones excluyentes, apiladas. Se perdieron al quitar el bloque
+   del ejemplo del mando de macros y las cazó la captura de prueba: el selector
+   de «mantener / pedir otro» salía sin estilo ninguno. */
+.segs {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
   background: var(--panel-2);
   border-radius: var(--r-s);
-  font-size: 12px;
-  line-height: 1.4;
+}
+.seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-s);
+  padding: 8px 11px;
+  font-size: 13.5px;
   color: var(--suave);
 }
-.ejemplo .pie-ejemplo {
-  color: var(--tenue);
-  padding-bottom: 3px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid var(--linea);
-}
-.ejemplo b {
-  font-family: var(--cifras);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
+.seg b {
+  margin-left: auto;
   color: var(--tinta);
+  white-space: nowrap;
+}
+.seg:hover:not(:disabled) {
+  background: transparent;
+  color: var(--tinta);
+}
+.seg[aria-pressed="true"] {
+  background: var(--panel);
+  color: var(--tinta);
+  font-weight: 500;
+  box-shadow: var(--sombra-1);
 }
 
 .opcion {

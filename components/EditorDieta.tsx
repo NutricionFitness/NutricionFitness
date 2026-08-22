@@ -41,6 +41,26 @@ import {
 
 const redondear1 = (v: number) => Math.round(v * 10) / 10;
 
+/**
+ * Cuánto pesa el reparto de macros frente a no mover la dieta.
+ *
+ * Era un deslizante de 10 a 500 en la pantalla, y medirlo lo dejó sin
+ * argumentos: para mantener el reparto que la dieta ya tiene —lo único que se
+ * podía pedir— de 30 en adelante el resultado es idéntico con cualquier margen,
+ * y por debajo sale peor en las dos cosas a la vez (más desvío Y más gramos
+ * movidos). 470 de sus 490 puntos no hacían nada.
+ *
+ * Fijado alto a propósito: ahora que se puede pedir un reparto distinto, lo que
+ * se pide es lo que se intenta. Con un objetivo lejano, 600 llega a 38,6/39,8/21,5
+ * de un 40/38/22 pedido; subir a 1200 solo gana medio punto y mueve 55 g más.
+ * Quien limita cuánto se mueve la dieta es el margen por componente, que es un
+ * control con unidades y que se entiende.
+ */
+const FUERZA_MACROS = 600;
+
+/** Coma o punto, los dos valen: la gente escribe «33,3». */
+const aNumero = (s: string) => Number(String(s).replace(",", "."));
+
 /** «equitativo_kcal» se lee «Equitativo kcal»: es una opción, no una constante. */
 const nombreModo = (m: Modo) => {
   const t = m.replace(/_/g, " ");
@@ -73,7 +93,9 @@ function EditorCompleto({
   const [objetivo, setObjetivo] = useState(() => Math.round(e0));
   const [modo, setModo] = useState<Modo>("prioridades");
   const [conMacros, setConMacros] = useState(false);
-  const [fuerza, setFuerza] = useState(60);
+  // false = mantener el reparto que ya tiene; true = pedir uno distinto.
+  const [pedirOtro, setPedirOtro] = useState(false);
+  const [pedido, setPedido] = useState({ prot: "", hc: "", grasa: "" });
   const [holgura, setHolgura] = useState(40);
   const [sustituyendo, setSustituyendo] = useState<string | null>(null);
   const [verLimites, setVerLimites] = useState(false);
@@ -93,21 +115,43 @@ function EditorCompleto({
     return () => document.removeEventListener("keydown", alPulsar);
   }, [cajon]);
 
+  const trio = useMemo(
+    () => [aNumero(pedido.prot), aNumero(pedido.hc), aNumero(pedido.grasa)],
+    [pedido],
+  );
+  const sumaPedida = trio.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+  const pedidoValido =
+    trio.every((v) => Number.isFinite(v) && v >= 0) && Math.round(sumaPedida) === 100;
+
+  // El reparto de ahora, redondeado y cuadrado a 100: si se redondea a pelo puede
+  // salir 27/47/25, que no suma y el motor lo rechazaría.
+  const actualRedondeado = useMemo(() => {
+    const p = Math.round(pctActual.prot);
+    const h = Math.round(pctActual.hc);
+    return [p, h, 100 - p - h];
+  }, [pctActual]);
+
   const opciones = useMemo(
     () => ({
       modo,
       holguraRel: holgura / 100,
       redondear: true,
-      fuerzaMacros: fuerza,
-      macrosObjetivo: conMacros
-        ? {
-            prot: pctActual.prot / 100,
-            hc: pctActual.hc / 100,
-            grasa: pctActual.grasa / 100,
-          }
-        : null,
+      fuerzaMacros: FUERZA_MACROS,
+      // Nunca se manda un reparto que no sume 100: `gramosObjetivo` lanza
+      // `ErrorMotor` y tumbaría la pantalla mientras se está escribiendo.
+      macrosObjetivo: !conMacros
+        ? null
+        : pedirOtro
+          ? pedidoValido
+            ? { prot: trio[0] / 100, hc: trio[1] / 100, grasa: trio[2] / 100 }
+            : null
+          : {
+              prot: pctActual.prot / 100,
+              hc: pctActual.hc / 100,
+              grasa: pctActual.grasa / 100,
+            },
     }),
-    [modo, holgura, fuerza, conMacros, pctActual],
+    [modo, holgura, conMacros, pedirOtro, pedidoValido, trio, pctActual],
   );
 
   const resultado: Resultado = useMemo(
@@ -837,46 +881,90 @@ function EditorCompleto({
               checked={conMacros}
               onChange={(e) => setConMacros(e.target.checked)}
             />
-            Mantener el reparto de macros
+            Controlar el reparto de macros
           </label>
 
           {conMacros && (
-            <label className="campo">
-              <span className="etiqueta">
-                Cuánto insistir en ese reparto: <b className="cifra">{fuerza}</b>
-              </span>
-              <input
-                type="range"
-                min={10}
-                max={500}
-                step={10}
-                value={fuerza}
-                onChange={(e) => setFuerza(Number(e.target.value))}
-              />
+            <div className="campo">
+              <div className="segs">
+                <button
+                  type="button"
+                  className="seg"
+                  aria-pressed={!pedirOtro}
+                  onClick={() => setPedirOtro(false)}
+                >
+                  Mantener el que tiene ahora
+                  <b className="cifra"> {actualRedondeado.join(" / ")}</b>
+                </button>
+                <button
+                  type="button"
+                  className="seg"
+                  aria-pressed={pedirOtro}
+                  onClick={() => {
+                    // Se arranca del reparto de ahora: es un punto de partida que
+                    // ya suma 100 y se ve enseguida qué hay que mover.
+                    if (!pedido.prot && !pedido.hc && !pedido.grasa)
+                      setPedido({
+                        prot: String(actualRedondeado[0]),
+                        hc: String(actualRedondeado[1]),
+                        grasa: String(actualRedondeado[2]),
+                      });
+                    setPedirOtro(true);
+                  }}
+                >
+                  Pedir otro
+                </button>
+              </div>
+
+              {pedirOtro && (
+                <>
+                  <div className="reparto-pedido">
+                    {(
+                      [
+                        ["prot", "P"],
+                        ["hc", "HC"],
+                        ["grasa", "G"],
+                      ] as const
+                    ).map(([clave, etiqueta]) => (
+                      <label key={clave}>
+                        <span className="etiqueta">{etiqueta}</span>
+                        <span className="con-unidad">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step="0.1"
+                            inputMode="decimal"
+                            value={pedido[clave]}
+                            onChange={(e) =>
+                              setPedido({ ...pedido, [clave]: e.target.value })
+                            }
+                          />
+                          <span className="unidad">%</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <p className={pedidoValido ? "suma-ok" : "suma-mal"}>
+                    {pedidoValido
+                      ? "Suman 100. Se está pidiendo ese reparto."
+                      : `Los tres tienen que sumar 100 y ahora suman ${
+                          Number.isFinite(sumaPedida) ? redondear1(sumaPedida) : 0
+                        }. Hasta que sumen, no se pide ningún reparto.`}
+                  </p>
+                </>
+              )}
+
               <small>
-                No es un porcentaje ni un tope: es un mando sin unidades. Al pedir un
-                reparto de macros hay dos cosas que tiran en sentidos contrarios
-                —clavar ese reparto y mover los menos gramos posibles—, y esto decide
-                cuál gana. Cuanto más alto, más se acerca al reparto pedido y menos se
-                parece la dieta a la que tenías.
+                El reparto va en <strong>porcentaje de la energía</strong>, no en
+                gramos. Moviendo cantidades de los mismos alimentos se llega hasta
+                donde se llega: si se queda lejos, el resultado lo dirá, y entonces
+                lo que hace falta es cambiar algún ingrediente, no más gramos.
+                Cuánto puede moverse la dieta para conseguirlo lo decide el margen
+                de aquí abajo.
               </small>
-              <ul className="ejemplo">
-                <li className="pie-ejemplo">
-                  Ejemplo: una dieta de 1.681 kcal repartida 27/47/26 a la que le pides
-                  1.850 kcal con 40/38/22.
-                </li>
-                <li>
-                  <b>10</b> se queda en 29/46/25 y mueve unos 260 g en total.
-                </li>
-                <li>
-                  <b>60</b> llega a 33/44/23 moviendo unos 400 g.
-                </li>
-                <li>
-                  <b>300</b> llega a 38/41/21, pero moviendo unos 655 g: la merluza
-                  pasa de 180 a 315 g.
-                </li>
-              </ul>
-            </label>
+            </div>
           )}
 
           <label className="campo">
