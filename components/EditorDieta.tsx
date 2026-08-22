@@ -569,7 +569,13 @@ function EditorCompleto({
                     return (
                       <tr key={c.id}>
                         <td>
-                          {c.ingredientes.nombre}
+                          <Link
+                            href={`/ingredientes/${c.ingrediente_id}`}
+                            className="nombre-ingrediente"
+                            title="Ver o corregir su ficha"
+                          >
+                            {c.ingredientes.nombre}
+                          </Link>
                           {choques.has(c.id) && (
                             <span
                               className="chip alergia fuerte"

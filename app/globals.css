@@ -1196,6 +1196,20 @@ textarea {
   padding: 8px 12px;
   border-top: 1px solid var(--linea);
 }
+/* El nombre del ingrediente lleva a su ficha. Se pinta como texto normal para
+   no teñir de verde toda la columna: el subrayado aparece al pasar por encima. */
+.nombre-ingrediente {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 22%, transparent);
+  text-underline-offset: 3px;
+}
+.nombre-ingrediente:hover,
+.nombre-ingrediente:focus-visible {
+  color: var(--acento);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
 .acciones {
   display: flex;
   gap: 2px;
