@@ -990,6 +990,23 @@ textarea {
 .pastilla.avisa b {
   color: var(--aviso);
 }
+/* El aspa de la pastilla del objetivo: quitar la propuesta sin abrir el cajón.
+   Antes solo se quitaba saliéndose de la página. */
+.quitar-propuesta {
+  border: 0;
+  background: none;
+  padding: 0 0 0 4px;
+  margin: 0 -3px 0 0;
+  color: inherit;
+  opacity: 0.65;
+  font-size: 11px;
+  line-height: 1;
+}
+.quitar-propuesta:hover:not(:disabled) {
+  background: none;
+  border-color: transparent;
+  opacity: 1;
+}
 
 /* ============================================== reparto de macros ======== */
 

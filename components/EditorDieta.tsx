@@ -160,7 +160,39 @@ function EditorCompleto({
   );
 
   const rango = resultado.rangoAlcanzable;
-  const hayCambios = Math.abs(objetivo - e0) > 0.5;
+  // ¿Hay propuesta? Se mira lo que se ha PEDIDO, no lo que el motor devuelve.
+  //
+  // Mirar el resultado parece más listo y es una trampa: `redondearAPasos` cuadra
+  // cada componente a su paso de 5 g, así que una dieta con 63, 218 o 123 g
+  // «propone» 65, 220 y 125 sin que nadie haya tocado nada. Se probó, y la
+  // propuesta salía sola al abrir cualquier dieta con gramos no redondos.
+  //
+  // Con las kcal no bastaba: desde que se puede pedir un reparto distinto, se
+  // puede querer cambiar el reparto SIN mover el total.
+  const repartoDistinto =
+    conMacros &&
+    pedirOtro &&
+    pedidoValido &&
+    (Math.abs(trio[0] - pctActual.prot) > 0.5 ||
+      Math.abs(trio[1] - pctActual.hc) > 0.5 ||
+      Math.abs(trio[2] - pctActual.grasa) > 0.5);
+
+  const hayCambios = Math.abs(objetivo - e0) > 0.5 || repartoDistinto;
+
+  /**
+   * Deja la dieta como estaba: quita la propuesta.
+   *
+   * Devuelve a su sitio lo que la produce —el objetivo y el reparto pedido— y no
+   * toca el cómo —el modo de reparto y el margen—, que son preferencias de cómo
+   * se haría un ajuste, no el ajuste. Sin nada que proponer, esos dos no cambian
+   * nada, así que borrarlos solo sería tirar trabajo del usuario.
+   */
+  function cancelar() {
+    setObjetivo(Math.round(e0));
+    setConMacros(false);
+    setPedirOtro(false);
+    setPedido({ prot: "", hc: "", grasa: "" });
+  }
 
   function guardar() {
     iniciar(async () => {
@@ -290,6 +322,15 @@ function EditorCompleto({
         {hayCambios && (
           <span className="pastilla avisa">
             objetivo <b>{objetivo}</b>
+            <button
+              type="button"
+              className="quitar-propuesta"
+              onClick={cancelar}
+              title="Quitar la propuesta y dejar la dieta como está"
+              aria-label="Quitar la propuesta"
+            >
+              ✕
+            </button>
           </span>
         )}
 
@@ -1051,10 +1092,21 @@ function EditorCompleto({
               {pendiente ? "Guardando…" : "Guardar como nueva versión"}
             </button>
           )}
+          {hayCambios && (
+            <button
+              type="button"
+              onClick={cancelar}
+              disabled={pendiente}
+              title="Deja la dieta como está. No borra nada de lo guardado."
+              style={{ justifyContent: "center" }}
+            >
+              Cancelar el ajuste
+            </button>
+          )}
           <p className="tenue" style={{ fontSize: 12, margin: 0, lineHeight: 1.45 }}>
             {hayCambios
               ? "El cálculo corre en tu navegador: mover el control no consulta al servidor."
-              : "Mueve el objetivo para ver una propuesta."}{" "}
+              : "Mueve el objetivo, o pide un reparto, para ver una propuesta."}{" "}
             <Link href="/personas">Volver</Link>
           </p>
         </footer>
