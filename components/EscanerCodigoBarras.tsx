@@ -4,12 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { leerFotograma } from "@/lib/codigo-barras/decodificar";
 import { normalizarEan } from "@/lib/openfoodfacts/ean";
-import { IconoCerrar } from "./Iconos";
 
 /**
  * La cámara leyendo códigos de barras.
  *
- * Tres cosas que condicionan todo lo demás:
+ * **Dos modos, nunca los dos a la vez.** La primera versión enseñaba el campo
+ * para teclear el código debajo del visor, y en un móvil eso deja una franja de
+ * dos centímetros a la que hay que llegar deslizando mientras la cámara sigue
+ * encendida ocupando la pantalla. Ahora escribir a mano es una pantalla entera:
+ * al pasar a ella la cámara **se apaga de verdad** —se paran las pistas del
+ * flujo, así que se apaga también el piloto—, y el campo queda donde se ve.
+ *
+ * Otras dos cosas que condicionan el resto:
  *
  * · **Va en un `<dialog>` abierto con `showModal()`**, no en un `div` flotante.
  *   Un `<dialog>` modal se pinta en la capa superior del navegador, así que no
@@ -21,9 +27,6 @@ import { IconoCerrar } from "./Iconos";
  *   de control caza casi todas las lecturas malas, pero «casi» no basta cuando
  *   la consecuencia es meter otro alimento en la dieta de alguien. Dos lecturas
  *   iguales cuestan una décima de segundo.
- *
- * · **Siempre se puede teclear el código.** Un envase arrugado, un código
- *   rayado o un móvil sin cámara no pueden ser un callejón sin salida.
  */
 
 /** `BarcodeDetector` aún no está en los tipos del DOM. Lo justo para usarlo. */
@@ -52,10 +55,8 @@ declare global {
 
 const FORMATOS = ["ean_13", "ean_8", "upc_a", "upc_e"];
 
-type Estado =
-  | { fase: "arrancando" }
-  | { fase: "leyendo"; nativo: boolean }
-  | { fase: "fallo"; texto: string };
+type Modo = "camara" | "manual";
+type Estado = { fase: "arrancando" } | { fase: "leyendo"; nativo: boolean };
 
 export default function EscanerCodigoBarras({
   onCodigo,
@@ -67,16 +68,19 @@ export default function EscanerCodigoBarras({
 }) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const campo = useRef<HTMLInputElement>(null);
   const lienzo = useRef<HTMLCanvasElement | null>(null);
   const flujo = useRef<MediaStream | null>(null);
-  const vivo = useRef(true);
+  const vivo = useRef(false);
   const anterior = useRef<string | null>(null);
   const entregado = useRef(false);
 
+  const [modo, setModo] = useState<Modo>("camara");
   const [estado, setEstado] = useState<Estado>({ fase: "arrancando" });
+  const [falloCamara, setFalloCamara] = useState<string | null>(null);
   const [linterna, setLinterna] = useState<boolean | null>(null); // null = no la hay
   const [tecleado, setTecleado] = useState("");
-  const [fallo, setFallo] = useState<string | null>(null);
+  const [falloCodigo, setFalloCodigo] = useState<string | null>(null);
 
   // Una sola entrega: sin esto, dos fotogramas seguidos con el mismo código
   // llamarían dos veces y se crearían dos ingredientes.
@@ -90,19 +94,36 @@ export default function EscanerCodigoBarras({
     [onCodigo],
   );
 
-  // ------------------------------------------------------------- la cámara --
+  const cerrar = useCallback(() => {
+    vivo.current = false;
+    onCerrar();
+  }, [onCerrar]);
+
+  // Abrir el diálogo, una sola vez. `if (!open)` porque en desarrollo React
+  // monta y desmonta dos veces, y `showModal()` sobre uno ya abierto lanza.
   useEffect(() => {
+    const d = dialogo.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+
+  // ------------------------------------------------------------- la cámara --
+  // Atada al modo: al pasar a «manual» se ejecuta la limpieza, que para las
+  // pistas del flujo. Eso es lo que apaga la cámara y su piloto de verdad; con
+  // solo esconder el vídeo seguiría encendida.
+  useEffect(() => {
+    if (modo !== "camara") return;
+
     vivo.current = true;
-    dialogo.current?.showModal();
+    anterior.current = null;
+    setEstado({ fase: "arrancando" });
 
     (async () => {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-        setEstado({
-          fase: "fallo",
-          texto: !window.isSecureContext
+        aMano(
+          !window.isSecureContext
             ? "El navegador solo deja usar la cámara en páginas seguras (https)."
             : "Este navegador no da acceso a la cámara.",
-        });
+        );
         return;
       }
 
@@ -120,17 +141,17 @@ export default function EscanerCodigoBarras({
         });
       } catch (e) {
         const nombre = e instanceof Error ? e.name : "";
-        setEstado({
-          fase: "fallo",
-          texto:
-            nombre === "NotAllowedError"
-              ? "No has dado permiso para usar la cámara. Se cambia en el candado de la barra de direcciones."
-              : nombre === "NotFoundError"
-                ? "Este aparato no tiene cámara."
-                : nombre === "NotReadableError"
-                  ? "La cámara la está usando otra aplicación."
-                  : "No se ha podido abrir la cámara.",
-        });
+        // Si no hay cámara, no se deja un rectángulo negro con una excusa: se
+        // pasa a lo que sí se puede hacer, que es teclear el código.
+        aMano(
+          nombre === "NotAllowedError"
+            ? "No has dado permiso para usar la cámara. Se cambia en el candado de la barra de direcciones."
+            : nombre === "NotFoundError"
+              ? "Este aparato no tiene cámara."
+              : nombre === "NotReadableError"
+                ? "La cámara la está usando otra aplicación."
+                : "No se ha podido abrir la cámara.",
+        );
         return;
       }
 
@@ -165,10 +186,23 @@ export default function EscanerCodigoBarras({
       vivo.current = false;
       flujo.current?.getTracks().forEach((t) => t.stop());
       flujo.current = null;
+      setLinterna(null);
     };
-    // Se monta y se desmonta entero: no hay dependencias que puedan cambiar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [modo]);
+
+  // Al llegar a «escribir a mano», el cursor ya en el campo. En iOS puede que
+  // el teclado no suba solo —solo lo abre un gesto directo—, y por eso el campo
+  // es grande: tocarlo tiene que ser fácil.
+  useEffect(() => {
+    if (modo === "manual") campo.current?.focus();
+  }, [modo]);
+
+  /** Pasa a escribir a mano, contando por qué si es que la cámara ha fallado. */
+  function aMano(motivo: string | null = null) {
+    setFalloCamara(motivo);
+    setModo("manual");
+  }
 
   // -------------------------------------------------------------- el bucle --
   async function bucle(nativo: boolean) {
@@ -225,7 +259,7 @@ export default function EscanerCodigoBarras({
   function mandarTecleado() {
     const ean = normalizarEan(tecleado);
     if (!ean) {
-      setFallo(
+      setFalloCodigo(
         "Ese código no cuadra. Son los 8 o 13 dígitos de debajo de las barras, " +
           "y el último es un dígito de control: si no encaja, hay alguno mal.",
       );
@@ -234,33 +268,76 @@ export default function EscanerCodigoBarras({
     entregar(ean.codigo);
   }
 
-  const cerrar = () => {
-    vivo.current = false;
-    onCerrar();
-  };
+  const cabecera = (titulo: string) => (
+    <header>
+      <h2>{titulo}</h2>
+      {/* Rojo y con la palabra escrita, no un aspa. Se abre con el envase en
+          una mano y el móvil en la otra: hay que poder salir sin apuntar. */}
+      <button type="button" className="peligro cancelar" onClick={cerrar}>
+        Cancelar
+      </button>
+    </header>
+  );
 
+  // ------------------------------------------------------ escribir a mano --
+  if (modo === "manual")
+    return (
+      <dialog ref={dialogo} className="escaner" onClose={cerrar} onCancel={cerrar}>
+        {cabecera("Escribir el código")}
+
+        <div className="manual">
+          {falloCamara && <p className="aviso-caja">{falloCamara}</p>}
+
+          <label className="campo">
+            <span className="etiqueta">Los dígitos de debajo de las barras</span>
+            <input
+              ref={campo}
+              value={tecleado}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="8410179000015"
+              onChange={(e) => {
+                setTecleado(e.target.value);
+                setFalloCodigo(null);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && mandarTecleado()}
+            />
+            <small>Son 8 o 13. Los espacios y los guiones dan igual.</small>
+          </label>
+
+          {falloCodigo && <p className="aviso">{falloCodigo}</p>}
+
+          <button className="principal grande" onClick={mandarTecleado} disabled={!tecleado.trim()}>
+            Buscar este código
+          </button>
+
+          <button
+            type="button"
+            className="azul"
+            onClick={() => {
+              // Se limpia el motivo: si la cámara vuelve a fallar, el efecto lo
+              // pondrá otra vez, y si no, no debe quedarse un aviso viejo.
+              setFalloCamara(null);
+              setModo("camara");
+            }}
+          >
+            Volver a la cámara
+          </button>
+        </div>
+      </dialog>
+    );
+
+  // ------------------------------------------------------------- la cámara --
   return (
     <dialog ref={dialogo} className="escaner" onClose={cerrar} onCancel={cerrar}>
-      <header>
-        <h2>Escanear un código de barras</h2>
-        <button type="button" className="cerrar" onClick={cerrar} title="Cerrar" aria-label="Cerrar">
-          <IconoCerrar />
-        </button>
-      </header>
+      {cabecera("Escanear un código de barras")}
 
       <div className="visor">
         <video ref={video} playsInline muted autoPlay aria-label="Vista de la cámara" />
         {/* La mirilla no recorta nada: solo dice dónde poner el código. El
             lector barre la franja central del fotograma, que es esta. */}
         <div className="mirilla" aria-hidden />
-
         {estado.fase === "arrancando" && <p className="capa">Abriendo la cámara…</p>}
-        {estado.fase === "fallo" && (
-          <div className="capa">
-            <p>{estado.texto}</p>
-            <p className="tenue">Puedes teclear el código aquí debajo.</p>
-          </div>
-        )}
       </div>
 
       <div className="pie">
@@ -277,28 +354,9 @@ export default function EscanerCodigoBarras({
           </button>
         )}
 
-        <div className="a-mano">
-          <label className="campo">
-            <span className="etiqueta">…o teclea los dígitos de debajo de las barras</span>
-            <span className="fila">
-              <input
-                value={tecleado}
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="8410179000015"
-                onChange={(e) => {
-                  setTecleado(e.target.value);
-                  setFallo(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && mandarTecleado()}
-              />
-              <button type="button" className="principal" onClick={mandarTecleado} disabled={!tecleado.trim()}>
-                Buscar
-              </button>
-            </span>
-          </label>
-          {fallo && <p className="aviso">{fallo}</p>}
-        </div>
+        <button type="button" className="azul grande" onClick={() => aMano()}>
+          Cerrar cámara y escribir a mano
+        </button>
       </div>
     </dialog>
   );

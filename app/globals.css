@@ -39,6 +39,15 @@
   --peligro-hover: #8d2925;
   --peligro-suave: #fceceb;
 
+  /* Azul: NO es un segundo acento. Se usa en un único sitio —cambiar entre
+     leer con la cámara y teclear el código— porque ahí no vale ni el verde,
+     que es «esta es la acción», ni el rojo, que es «esto se cancela»: es
+     cambiar de herramienta. Deliberadamente no está en el sistema general.
+     No es `--m-prot`, aunque se parezcan: ese azul significa proteína. */
+  --azul: #1f5fa8;
+  --azul-hover: #194f8c;
+  --azul-tinta: #ffffff;
+
   /* --- macronutrientes: misma paleta que la hoja impresa --- */
   --m-prot: #2a78d6;
   --m-hc: #eb6834;
@@ -80,6 +89,10 @@
     --peligro-hover: #e58479;
     --peligro-suave: #2c1614;
 
+    --azul: #5aa2de;
+    --azul-hover: #6db0e8;
+    --azul-tinta: #071320;
+
     --m-prot: #5b9ad1;
     --m-hc: #ef8a5e;
     --m-grasa: #3fc79a;
@@ -112,6 +125,10 @@
   --peligro: #d97066;
   --peligro-hover: #e58479;
   --peligro-suave: #2c1614;
+
+  --azul: #5aa2de;
+  --azul-hover: #6db0e8;
+  --azul-tinta: #071320;
 
   --m-prot: #5b9ad1;
   --m-hc: #ef8a5e;
@@ -419,6 +436,22 @@ button.peligro {
 button.peligro:hover:not(:disabled) {
   background: var(--peligro-hover);
   border-color: transparent;
+}
+button.azul {
+  background: var(--azul);
+  color: var(--azul-tinta);
+  border-color: transparent;
+  font-weight: 600;
+}
+button.azul:hover:not(:disabled) {
+  background: var(--azul-hover);
+  border-color: transparent;
+}
+/* Para lo que se pulsa con el pulgar y el móvil en la otra mano. */
+button.grande {
+  padding: 13px 16px;
+  font-size: 15px;
+  width: 100%;
 }
 
 /* Botón de icono: subir, bajar, sustituir, quitar. */
@@ -1675,6 +1708,10 @@ button.icono.ayuda-boton[aria-expanded="true"] {
 .escaner {
   width: min(520px, 94vw);
   max-height: 92vh;
+  /* `dvh` es la altura que queda de verdad: con el teclado del móvil abierto,
+     `vh` sigue midiendo la pantalla entera y el campo se va debajo del
+     teclado. La línea de `vh` de arriba queda como respaldo. */
+  max-height: 92dvh;
   padding: 0;
   border: 1px solid var(--linea);
   border-radius: var(--r-l);
@@ -1697,15 +1734,10 @@ button.icono.ayuda-boton[aria-expanded="true"] {
   margin: 0;
   font-size: 15px;
 }
-.escaner .cerrar {
+.escaner .cancelar {
   margin-left: auto;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  color: var(--suave);
-  border-color: var(--linea);
+  padding: 7px 14px;
+  flex: none;
 }
 
 .escaner .visor {
@@ -1758,29 +1790,46 @@ button.icono.ayuda-boton[aria-expanded="true"] {
   color: #b9c3ba;
 }
 
+/* El pie ya no lleva formulario: solo la instrucción, la luz y el paso a
+   escribir a mano. Por eso no necesita deslizarse ni robarle sitio al visor. */
 .escaner .pie {
   padding: 12px 14px 14px;
   display: grid;
   gap: 10px;
-  /* Con el teclado del móvil abierto el diálogo se queda sin sitio: que sea
-     esta parte la que se desliza y no el visor. */
-  max-height: 46vh;
-  overflow-y: auto;
+  flex: none;
 }
 .escaner .instruccion {
   margin: 0;
   font-size: 13px;
 }
-.escaner .a-mano .fila {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.escaner .a-mano input {
+
+/* --- escribir el código a mano: pantalla entera, sin cámara detrás --- */
+
+.escaner .manual {
+  padding: 16px 14px 18px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  overflow-y: auto;
   flex: 1 1 auto;
-  min-width: 0; /* si no, el input ensancha la fila y desborda el diálogo */
+  min-height: 0;
+}
+.escaner .manual .aviso-caja {
+  margin: 0;
+}
+.escaner .manual input {
+  /* Grande de verdad: es lo único que hay que tocar en esta pantalla, y en
+     iOS el teclado no sube solo, así que el objetivo tiene que ser cómodo. */
+  width: 100%;
+  min-width: 0;
+  padding: 14px 14px;
   font-family: var(--cifras);
-  letter-spacing: 0.04em;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.escaner .manual .campo small {
+  margin-top: 5px;
 }
 
 /* --- el bloque de escaneo en el alta de ingrediente --- */
@@ -1870,6 +1919,8 @@ button:has(> svg + span) {
     max-width: none;
     max-height: 100vh;
     height: 100vh;
+    max-height: 100dvh;
+    height: 100dvh;
     border: 0;
     border-radius: 0;
   }
