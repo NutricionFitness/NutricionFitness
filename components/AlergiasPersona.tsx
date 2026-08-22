@@ -79,7 +79,7 @@ export default function AlergiasPersona({
       {alergias.length === 0 ? (
         <p className="tenue" style={{ margin: "8px 0 0", fontSize: 13.5 }}>
           Ninguna declarada. Si la añades, las dietas de esta persona avisarán
-          cuando lleven un ingrediente que la lleve.
+          cuando lleven un ingrediente que la contenga.
         </p>
       ) : (
         <div className="fila" style={{ gap: 6, marginTop: 10 }}>
