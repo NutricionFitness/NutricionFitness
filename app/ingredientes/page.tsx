@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import SelectorGrupos from "@/components/SelectorGrupos";
 import SelectorPorPagina from "@/components/SelectorPorPagina";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { gruposDisponibles } from "./grupos";
 
 export const dynamic = "force-dynamic";
 
@@ -79,23 +80,7 @@ export default async function Ingredientes({
 
   const supabase = await clienteServidor();
 
-  // Los grupos que existen de verdad, para el desplegable. Son quince, pero se
-  // leen de los datos y no de una lista escrita a mano: si mañana aparece uno
-  // nuevo en BEDCA, sale solo. El `limit` alto es para que un tope de filas del
-  // servidor no deje fuera el último grupo por orden alfabético.
-  const { data: filasGrupo } = await supabase
-    .from("ingredientes")
-    .select("grupo")
-    .eq("preferente", true)
-    .limit(5000);
-
-  const gruposDisponibles = [
-    ...new Set(
-      (filasGrupo ?? [])
-        .map((f) => (f.grupo as string | null) ?? "")
-        .filter((g): g is string => g !== ""),
-    ),
-  ].sort((a, b) => a.localeCompare(b, "es"));
+  const disponibles = await gruposDisponibles();
 
   let consulta = supabase
     .from("ingredientes")
@@ -125,15 +110,23 @@ export default async function Ingredientes({
 
   return (
     <>
-      <h1>Ingredientes</h1>
+      <div className="fila" style={{ alignItems: "flex-start" }}>
+        <h1>Ingredientes</h1>
+        <span style={{ flex: 1 }} />
+        <Link href="/ingredientes/nuevo" className="boton-enlace">
+          + Nuevo ingrediente
+        </Link>
+      </div>
       <p className="sub">
-        Catálogo de BEDCA. Se muestran los preferentes: un registro por nombre, el
-        más completo de los que ofrece la fuente.
+        Catálogo de BEDCA más los tuyos. De BEDCA se muestran los preferentes: un
+        registro por nombre, el más completo de los que ofrece la fuente.{" "}
+        <strong>Todos los valores son por 100 g de porción comestible.</strong>{" "}
+        Pincha en un ingrediente para ver su ficha entera.
       </p>
 
       <form className="fila buscador-catalogo" style={{ marginBottom: 18 }}>
         <input name="q" defaultValue={q} placeholder="Buscar…" style={{ minWidth: 220 }} />
-        <SelectorGrupos grupos={gruposDisponibles} elegidos={grupos} />
+        <SelectorGrupos grupos={disponibles} elegidos={grupos} />
         <button className="principal">Buscar</button>
         <span style={{ flex: 1 }} />
         <SelectorPorPagina valor={por} opciones={TAMANOS} />
@@ -152,17 +145,29 @@ export default async function Ingredientes({
                   <th>Nombre</th>
                   <th>Grupo</th>
                   <th>Estado</th>
-                  <th className="num">kcal</th>
-                  <th className="num">P</th>
-                  <th className="num">HC</th>
-                  <th className="num">G</th>
-                  <th className="num">Fibra</th>
+                  <th className="num" title="Kilocalorías por 100 g">
+                    kcal/100 g
+                  </th>
+                  <th className="num" title="Proteínas, en gramos por 100 g">
+                    P
+                  </th>
+                  <th className="num" title="Hidratos de carbono, en gramos por 100 g">
+                    HC
+                  </th>
+                  <th className="num" title="Grasa, en gramos por 100 g">
+                    G
+                  </th>
+                  <th className="num" title="Fibra, en gramos por 100 g">
+                    Fibra
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((i) => (
                   <tr key={i.id}>
-                    <td>{i.nombre}</td>
+                    <td>
+                      <Link href={`/ingredientes/${i.id}`}>{i.nombre}</Link>
+                    </td>
                     <td className="suave">{i.grupo ?? "—"}</td>
                     <td className="suave">{i.estado}</td>
                     <td className="num">{Math.round(Number(i.kcal_100))}</td>

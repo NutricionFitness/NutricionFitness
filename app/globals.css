@@ -453,6 +453,12 @@ button.icono.quitar:hover:not(:disabled) {
   display: grid;
   gap: 14px;
 }
+/* Sin esto, un `input[type=number]` dentro de una rejilla ensancha su columna
+   hasta su ancho mínimo intrínseco y la rejilla entera desborda la pantalla en
+   el móvil. `min-width: 0` deja que la columna mande sobre el contenido. */
+.rejilla > * {
+  min-width: 0;
+}
 .fila {
   display: flex;
   gap: 10px;
@@ -665,6 +671,102 @@ tr.total td {
   padding: 0;
 }
 
+/* ============================================= ficha de ingrediente ====== */
+
+.rejilla.dos {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.rejilla.cuatro {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 12px;
+}
+
+/* Tabla de dos columnas: etiqueta a la izquierda, número a la derecha. Va
+   dentro de una tarjeta, que ya pone el aire de los lados. */
+table.datos td {
+  padding: 7px 0;
+}
+table.datos tr:last-child td {
+  border-bottom: none;
+}
+
+.con-unidad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.con-unidad input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  text-align: right;
+}
+.con-unidad .unidad {
+  color: var(--tenue);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.kcal-calculada {
+  display: grid;
+  gap: 2px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border-radius: var(--r-m);
+}
+.kcal-calculada p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--tenue);
+}
+.kcal-calculada strong {
+  color: var(--suave);
+}
+
+.medidas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--suave);
+}
+.medidas b {
+  color: var(--tinta);
+  font-weight: 500;
+}
+
+textarea {
+  width: 100%;
+  font-family: var(--texto);
+  resize: vertical;
+}
+
+/* Un enlace que hace de botón: mismo aspecto que `button`, pero navega. */
+.boton-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--r-s);
+  padding: 8px 12px;
+  background: var(--panel);
+  color: var(--tinta);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.boton-enlace:hover {
+  background: var(--panel-2);
+  border-color: color-mix(in srgb, var(--linea-fuerte) 55%, var(--tinta));
+}
+
 /* ------------------------------------------------- filtro por grupo ----- */
 
 .grupos {
@@ -710,6 +812,28 @@ tr.total td {
   padding: 8px 10px;
   font-size: 13px;
   color: var(--tenue);
+}
+/* La ✕ de «dejarlo sin grupo», dentro del propio campo. */
+.limpiar-grupo {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tenue);
+  font-size: 12px;
+  line-height: 1;
+}
+.limpiar-grupo:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: transparent;
+  color: var(--tinta);
 }
 
 .por-pagina {

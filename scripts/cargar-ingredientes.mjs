@@ -11,7 +11,11 @@
  * Es idempotente: se apoya en la restricción única (owner_id, codigo_bedca) con
  * NULLS NOT DISTINCT, así que se puede relanzar sin duplicar nada. Los
  * ingredientes del catálogo van con owner_id NULL: los ve cualquiera que haya
- * iniciado sesión, pero nadie puede modificarlos.
+ * iniciado sesión.
+ *
+ * Desde la migración 0006 el catálogo compartido SÍ se puede corregir desde la
+ * app. Los ingredientes marcados con `editado_a_mano` se saltan en la carga,
+ * para que relanzarla no borre esas correcciones.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -49,10 +53,28 @@ async function main() {
   }
 
   const paquete = JSON.parse(gunzipSync(readFileSync(DATOS)).toString("utf8"));
-  const filas = paquete.ingredientes.map((i) => ({ ...i, owner_id: null }));
-  console.log(`${filas.length} ingredientes a cargar (fuente: ${paquete.fuente})`);
-
   const supabase = createClient(url, clave, { auth: { persistSession: false } });
+
+  // Lo que se ha corregido a mano desde la app no se toca. Esta carga usa la
+  // clave de servicio y se salta el RLS, así que si no se filtrara aquí, una
+  // recarga devolvería cada corrección a su valor original de BEDCA sin decir
+  // nada. La fuente manda, pero una corrección posterior es más reciente que la
+  // fuente.
+  const { data: tocados, error: errorTocados } = await supabase
+    .from("ingredientes")
+    .select("codigo_bedca")
+    .is("owner_id", null)
+    .eq("editado_a_mano", true);
+  if (errorTocados) throw new Error(`no se han podido leer las correcciones: ${errorTocados.message}`);
+  const protegidos = new Set((tocados ?? []).map((t) => t.codigo_bedca));
+
+  const todas = paquete.ingredientes.map((i) => ({ ...i, owner_id: null }));
+  const filas = todas.filter((i) => !protegidos.has(i.codigo_bedca));
+
+  console.log(`${todas.length} ingredientes en el paquete (fuente: ${paquete.fuente})`);
+  if (protegidos.size)
+    console.log(`   ${protegidos.size} se respetan por estar corregidos a mano`);
+  console.log(`${filas.length} a cargar`);
 
   let hechos = 0;
   for (let i = 0; i < filas.length; i += LOTE) {
