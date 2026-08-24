@@ -144,6 +144,7 @@ lib/
   openfoodfacts/  código de barras → ingrediente, con sus avisos             (51 tests)
   codigo-barras/  lector de EAN-13 y EAN-8, sin dependencias                 (17 tests)
   qr/             generador de códigos QR, sin dependencias                  (16 tests)
+  cola-codigos.ts cola de códigos escaneados, de uno en uno y en orden       (11 tests)
   supabase/       clientes de navegador y servidor
 app/
   login, cuenta, personas, personas/[id], dietas/[id],

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { buscarPorCodigoBarras } from "@/app/ingredientes/escanear";
 import type { AvisoEscaneo, PropuestaEscaneo } from "@/app/ingredientes/tipos";
+import { colaDeCodigos, type ColaCodigos, type EstadoCola } from "@/lib/cola-codigos";
 import EscanerCodigoBarras from "./EscanerCodigoBarras";
 import PanelEscaneoRemoto from "./PanelEscaneoRemoto";
 import { IconoCodigoBarras } from "./Iconos";
@@ -47,34 +48,36 @@ export default function AltaPorCodigo({
 }) {
   const [vista, setVista] = useState<Vista>("cerrado");
   const [mensaje, setMensaje] = useState<{ texto: string; tono: "aviso" | "tenue" } | null>(null);
-  const [buscando, setBuscando] = useState(false);
+
+  // En una referencia para que el trabajador de la cola no tenga que
+  // reconstruirse cada vez que el padre vuelve a pintar.
+  const avisar = useRef({ onEnCatalogo, onPropuesta, onSinFicha });
+  avisar.current = { onEnCatalogo, onPropuesta, onSinFicha };
 
   /**
    * La cola de códigos por mirar.
    *
-   * Con el móvil se pueden leer dos productos antes de que dé tiempo a
-   * consultar el primero. Se guardan y se van resolviendo de uno en uno: sin
-   * cola, el segundo pisaría al primero y desaparecería sin decir nada.
+   * La lógica está en `lib/cola-codigos.ts`, fuera de React y con su batería.
+   * No es una manía: la primera versión de esto era un `useEffect` con
+   * `[cola, buscando]` en las dependencias que hacía `setBuscando(true)`
+   * dentro, y eso hace que React ejecute la limpieza del efecto anterior y
+   * cancele su propia consulta. El código llegaba, se contaba en pantalla, y
+   * no aparecía nada. Un fallo así no se ve leyendo el código y no se puede
+   * probar sin montar medio navegador; sacándolo de aquí, sí.
+   *
+   * Lo que queda en React son tres líneas sin nada que se pueda torcer.
    */
-  const [cola, setCola] = useState<string[]>([]);
-  const avisar = useRef({ onEnCatalogo, onPropuesta, onSinFicha });
-  avisar.current = { onEnCatalogo, onPropuesta, onSinFicha };
+  const [cuantos, setCuantos] = useState<EstadoCola>({ mirando: null, pendientes: 0 });
+  const montado = useRef(true);
+  const cola = useRef<ColaCodigos | null>(null);
 
-  const encolar = useCallback((codigo: string) => {
-    setCola((antes) => (antes.includes(codigo) ? antes : [...antes, codigo]));
-  }, []);
+  const laCola = () => {
+    if (cola.current) return cola.current;
 
-  useEffect(() => {
-    if (buscando || cola.length === 0) return;
-    const codigo = cola[0];
-    let vivo = true;
-    setBuscando(true);
-    setMensaje(null);
-
-    (async () => {
-      try {
+    cola.current = colaDeCodigos(
+      async (codigo) => {
         const r = await buscarPorCodigoBarras(codigo);
-        if (!vivo) return;
+        if (!montado.current) return;
 
         switch (r.estado) {
           case "en_catalogo":
@@ -83,11 +86,12 @@ export default function AltaPorCodigo({
               texto: `«${r.ingrediente.nombre}» ya estaba en tu catálogo.`,
               tono: "tenue",
             });
-            break;
+            return;
 
           case "encontrado":
+            setMensaje(null);
             avisar.current.onPropuesta(r.propuesta);
-            break;
+            return;
 
           case "no_encontrado":
             avisar.current.onSinFicha?.(r.codigo);
@@ -98,32 +102,38 @@ export default function AltaPorCodigo({
                 "siguiente escaneo ya lo encontrará.",
               tono: "aviso",
             });
-            break;
+            return;
 
           case "sin_respuesta":
             setMensaje({ texto: r.motivo, tono: "aviso" });
-            break;
+            return;
 
           default:
             setMensaje({
-              texto: "Ese código no es válido. Vuelve a escanearlo o tecléalo.",
+              texto: `El código ${codigo} no es válido. Vuelve a escanearlo o tecléalo.`,
               tono: "aviso",
             });
         }
-      } catch {
-        if (vivo) setMensaje({ texto: "No se ha podido consultar el código.", tono: "aviso" });
-      } finally {
-        if (vivo) {
-          setCola((antes) => antes.slice(1));
-          setBuscando(false);
-        }
-      }
-    })();
+      },
+      (e) => {
+        if (montado.current) setCuantos(e);
+      },
+    );
+    return cola.current;
+  };
 
+  const encolar = useCallback((codigo: string) => laCola().encolar(codigo), []);
+
+  useEffect(() => {
+    montado.current = true;
     return () => {
-      vivo = false;
+      montado.current = false;
+      cola.current?.parar();
+      // A null para que se vuelva a crear si React remonta el componente, que
+      // es lo que hace en desarrollo con el modo estricto.
+      cola.current = null;
     };
-  }, [cola, buscando]);
+  }, []);
 
   /** Lo que llega de la cámara de aquí: un código y se cierra. */
   function alLeerAqui(codigo: string) {
@@ -133,9 +143,10 @@ export default function AltaPorCodigo({
 
   return (
     <>
-      <button type="button" onClick={() => setVista("preguntando")} disabled={buscando}>
+      <button type="button" onClick={() => setVista("preguntando")} disabled={Boolean(cuantos.mirando)}>
         <IconoCodigoBarras />
-        <span>{buscando ? "Buscando…" : etiqueta}</span>
+        {/* Con el código a la vista: si algo se atasca, se ve en cuál. */}
+        <span>{cuantos.mirando ? `Buscando ${cuantos.mirando}…` : etiqueta}</span>
       </button>
 
       {mensaje && (
@@ -144,9 +155,9 @@ export default function AltaPorCodigo({
         </p>
       )}
 
-      {cola.length > 1 && (
+      {cuantos.pendientes > 1 && (
         <p className="tenue" style={{ fontSize: 13 }}>
-          {cola.length - 1} código{cola.length > 2 ? "s" : ""} más esperando.
+          {cuantos.pendientes - 1} código{cuantos.pendientes > 2 ? "s" : ""} más esperando.
         </p>
       )}
 

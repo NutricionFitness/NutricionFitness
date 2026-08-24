@@ -88,7 +88,13 @@ export async function novedadesEscaneo(
       .eq("token", token)
       .gt("id", desde)
       .order("id")
-      .limit(50),
+      // De uno en uno a propósito. `desde` avanza en cuanto se recoge un
+      // código, así que recoger cincuenta de golpe y que el ordenador se
+      // desmonte a mitad —dentro de una dieta pasa: la tarjeta de revisión
+      // ocupa el sitio del panel— dejaría los demás dados por consumidos y
+      // perdidos. Uno cada dos segundos sobra para lo que se tarda en
+      // confirmar un producto.
+      .limit(1),
   ]);
 
   // Sin fila no hay sesión: o ha caducado y la ha limpiado alguien, o no es
