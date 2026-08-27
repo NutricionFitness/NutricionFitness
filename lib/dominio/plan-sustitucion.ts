@@ -44,6 +44,7 @@ import {
 } from "./sustituir";
 
 const FACTOR = { prot: 4, hc: 4, grasa: 9 } as const;
+const MACROS = ["prot", "hc", "grasa"] as const;
 
 /** Un componente de la dieta, visto desde aquí. */
 export interface ComponenteCambiable {
@@ -117,6 +118,48 @@ export function repartoPct(macros: Macros, energia: number): Macros {
     hc: (100 * FACTOR.hc * macros.hc) / energia,
     grasa: (100 * FACTOR.grasa * macros.grasa) / energia,
   };
+}
+
+/** Un macro que se desvía de lo pedido, con su signo. */
+export interface Desvio {
+  macro: "prot" | "hc" | "grasa";
+  /** Puntos porcentuales de energía. Positivo: sobra. Negativo: falta. */
+  puntos: number;
+}
+
+/**
+ * En qué se desvía el reparto de lo pedido, macro a macro.
+ *
+ * Existe porque «te quedas a 2,9 puntos de lo pedido» no lo entiende nadie, y
+ * con razón: es la suma de tres desviaciones, no una distancia de nada que se
+ * pueda señalar. Lo que sí se entiende es **dónde** falta y **dónde** sobra.
+ *
+ * Y hay un detalle que hace la suma engañosa: cuando se piden los tres macros,
+ * lo que falta y lo que sobra se compensan siempre —los dos repartos suman
+ * 100—, así que la suma de las tres desviaciones es exactamente **el doble**
+ * de lo que hay que mover. «30 puntos» son quince de proteína que faltan y
+ * quince repartidos entre lo que sobra, no treinta de nada.
+ *
+ * Se ignoran los desvíos por debajo de `minimo`: decir «te sobran 0,2 puntos
+ * de grasa» es ruido con pinta de precisión.
+ */
+export function desvios(
+  pct: Macros,
+  objetivoPct: Partial<Macros>,
+  minimo = 0.5,
+): Desvio[] {
+  const out: Desvio[] = [];
+  for (const m of MACROS) {
+    const pedido = objetivoPct[m];
+    if (pedido === undefined) continue;
+    // El objetivo llega unas veces en tanto por uno y otras en porcentaje; es
+    // el mismo criterio que usa `distanciaAlObjetivo`.
+    const pedidoPct = pedido <= 1.5 ? pedido * 100 : pedido;
+    const puntos = pct[m] - pedidoPct;
+    if (Math.abs(puntos) >= minimo) out.push({ macro: m, puntos });
+  }
+  // Lo más gordo primero: es lo que hay que mirar.
+  return out.sort((a, b) => Math.abs(b.puntos) - Math.abs(a.puntos));
 }
 
 /**

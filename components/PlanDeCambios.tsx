@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { aplicarPlan, buscarPlanDeCambios } from "@/app/dietas/[id]/acciones";
 import type { DatosPlan, PlanDeCambios as Plan } from "@/app/dietas/[id]/tipos";
+import { desvios } from "@/lib/dominio/plan-sustitucion";
 import type { Macros } from "@/lib/dominio/sustituir";
 
 /** Un decimal, con coma: la app escribe en español. */
@@ -121,6 +122,7 @@ export default function PlanDeCambios({
 
   const n = plan?.pasos.length ?? 0;
   const hayDescartes = excluir.length > 0 || sinEstos.length > 0;
+  const queda = plan ? enQueFalla(plan.pctFinal, datos.objetivoPct) : null;
 
   return (
     <dialog ref={dialogo} className="plan-cambios" onClose={onCerrar} onCancel={onCerrar}>
@@ -136,8 +138,12 @@ export default function PlanDeCambios({
           <Reparto p={plan.pctInicial} /> <span aria-hidden>→</span>{" "}
           <Objetivo o={datos.objetivoPct} />
           {/* Sin viñeta delante: en el móvil esto cae a su propia línea y un
-              «·» suelto al principio de la línea no significa nada. */}
-          <span className="tenue">a {n1(plan.distanciaInicial)} puntos de lo pedido</span>
+              «·» suelto al principio de la línea no significa nada.
+              Y en palabras, no en una distancia: «a 30,1 puntos» no dice dónde
+              falta ni dónde sobra, que es lo único que se puede accionar. */}
+          <span className="tenue">
+            {enQueFalla(plan.pctInicial, datos.objetivoPct) ?? "es lo que pides"}
+          </span>
         </p>
       )}
 
@@ -175,7 +181,15 @@ export default function PlanDeCambios({
                       )}
                     </div>
                   </div>
-                  <span className="acerca">+{n1(s.mejora)} pt</span>
+                  <span
+                    className="acerca"
+                    title={
+                      "Cuánto acerca este cambio, sumando lo que corrige en los tres " +
+                      "macros. Un punto es un 1% de las kilocalorías del día."
+                    }
+                  >
+                    +{n1(s.mejora)} pt
+                  </span>
                 </div>
 
                 <div className="pie">
@@ -221,17 +235,17 @@ export default function PlanDeCambios({
           </ol>
 
           <p className="llegada">
-            {plan.motivo === "tope" && plan.distanciaFinal > 2 ? (
-              <>
-                Con estos {n} cambios se queda en <Reparto p={plan.pctFinal} />, a{" "}
-                <strong>{n1(plan.distanciaFinal)} puntos</strong> de lo pedido. Más
-                cerca no llega con tres cambios: aplícalos y vuelve a pedir el plan, o pide
-                un reparto menos lejano.
-              </>
+            Con {n === 1 ? "este cambio" : `estos ${n} cambios`} la dieta queda en{" "}
+            <Reparto p={plan.pctFinal} />
+            {queda === null ? (
+              <>: <strong>justo lo que pides</strong>.</>
             ) : (
               <>
-                Con estos {n} cambios la dieta queda en <Reparto p={plan.pctFinal} />, a{" "}
-                <strong>{n1(plan.distanciaFinal)} puntos</strong> de lo pedido.
+                : todavía <strong>{queda}</strong>.
+                {plan.motivo === "tope" && plan.distanciaFinal > 2
+                  ? " Más cerca no llega con tres cambios: aplícalos y vuelve a pedir el" +
+                    " plan, o pide un reparto menos lejano."
+                  : ""}
               </>
             )}
           </p>
@@ -299,13 +313,67 @@ export default function PlanDeCambios({
           {algoAplicado ? "Cerrar" : "Cancelar"}
         </button>
         <p className="tenue">
-          Se aplican en orden y no mueven las kilocalorías: cada cantidad es la que aporta
+          Un <b>punto</b> es un 1% de las kilocalorías del día: si pides un 35% de
+          proteína y te quedas en el 31%, te faltan cuatro puntos. Los cambios se
+          aplican en orden y no mueven las kilocalorías: cada cantidad es la que aporta
           la misma energía que lo que había. Los gramos de la dieta no se tocan; el ajuste
           de kcal se hace después, como siempre.
         </p>
       </footer>
     </dialog>
   );
+}
+
+const NOMBRE_MACRO = { prot: "proteína", hc: "hidratos", grasa: "grasa" } as const;
+
+/** «a, b y c», no «a, b, c». */
+const enLista = (xs: string[]) =>
+  xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} y ${xs.at(-1)}`;
+
+/**
+ * En qué se queda corto el reparto, dicho en palabras.
+ *
+ * Antes aquí ponía «a 30,1 puntos de lo pedido» y Carlos preguntó, con razón,
+ * puntos de qué. Un número que hay que preguntar no vale, y además ese número
+ * es peor de lo que parece por dos motivos:
+ *
+ *  · **no señala nada**: es la suma de las tres desviaciones, así que no dice
+ *    si falta proteína o sobra grasa, que es lo único que se puede accionar; y
+ *  · **cuenta doble**: los dos repartos suman 100, así que lo que falta y lo
+ *    que sobra son el mismo número y la distancia los suma los dos. «30
+ *    puntos» son quince que faltan y quince que sobran.
+ *
+ * Devuelve null cuando no hay nada que decir —todo por debajo de medio punto—,
+ * para que quien llama escriba «justo lo que pides» en vez de «te faltan 0,0».
+ */
+function enQueFalla(pct: Macros, objetivo: Partial<Macros>): string | null {
+  const d = desvios(pct, objetivo);
+  if (!d.length) return null;
+
+  const falta = d.filter((x) => x.puntos < 0);
+  const sobra = d.filter((x) => x.puntos > 0);
+
+  // «puntos» se dice una sola vez, en la primera cifra: repetirlo en las tres
+  // convierte una frase en un formulario.
+  const cifras = (xs: typeof d, conUnidad: boolean) =>
+    xs.map((x, i) => {
+      const v = Math.abs(x.puntos);
+      const unidad = i === 0 && conUnidad ? (v.toFixed(1) === "1.0" ? " punto" : " puntos") : "";
+      return `${n1(v)}${unidad} de ${NOMBRE_MACRO[x.macro]}`;
+    });
+
+  const uno = (xs: typeof d) => xs.length === 1 && Math.abs(xs[0].puntos).toFixed(1) === "1.0";
+
+  const partes: string[] = [];
+  if (falta.length)
+    partes.push(`${uno(falta) ? "falta" : "faltan"} ${enLista(cifras(falta, true))}`);
+  if (sobra.length)
+    partes.push(
+      `${uno(sobra) ? "sobra" : "sobran"} ${enLista(cifras(sobra, partes.length === 0))}`,
+    );
+
+  // Punto y coma entre las dos mitades: con «y» salen tres seguidas.
+  return partes.join("; ");
 }
 
 /** «25/50/25» con los colores de siempre. */

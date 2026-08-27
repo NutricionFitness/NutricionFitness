@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  desvios,
   planDeSustitucion,
   repartoPct,
   type ComponenteCambiable,
@@ -73,6 +74,58 @@ describe("el reparto en porcentaje", () => {
 
   it("sin energía no inventa nada", () => {
     expect(repartoPct(MACROS, 0)).toEqual({ prot: 0, hc: 0, grasa: 0 });
+  });
+});
+
+describe("en qué se desvía el reparto", () => {
+  const PCT: Macros = { prot: 20, hc: 48, grasa: 32 };
+
+  it("dice dónde falta y dónde sobra, con signo", () => {
+    const d = desvios(PCT, { prot: 0.35, hc: 0.4, grasa: 0.25 });
+    expect(d).toEqual([
+      { macro: "prot", puntos: -15 },
+      { macro: "hc", puntos: 8 },
+      { macro: "grasa", puntos: 7 },
+    ]);
+  });
+
+  it("lo más gordo primero", () => {
+    const d = desvios({ prot: 24, hc: 45, grasa: 31 }, { prot: 0.25, hc: 0.5, grasa: 0.25 });
+    expect(d.map((x) => x.macro)).toEqual(["grasa", "hc", "prot"]);
+  });
+
+  it("lo que falta y lo que sobra se compensan: la suma es el doble", () => {
+    // Ésta es la razón de que «30 puntos» se lea peor de lo que es. Los dos
+    // repartos suman 100, así que el déficit y el superávit son el mismo
+    // número, y la distancia los cuenta los dos.
+    const objetivo = { prot: 0.35, hc: 0.4, grasa: 0.25 };
+    const d = desvios(PCT, objetivo);
+    const falta = d.filter((x) => x.puntos < 0).reduce((s, x) => s - x.puntos, 0);
+    const sobra = d.filter((x) => x.puntos > 0).reduce((s, x) => s + x.puntos, 0);
+    expect(falta).toBeCloseTo(sobra, 6);
+
+    const macros: Macros = {
+      prot: (PCT.prot * 2000) / 400,
+      hc: (PCT.hc * 2000) / 400,
+      grasa: (PCT.grasa * 2000) / 900,
+    };
+    expect(distanciaAlObjetivo(macros, 2000, objetivo)).toBeCloseTo(falta + sobra, 6);
+    expect(distanciaAlObjetivo(macros, 2000, objetivo)).toBeCloseTo(2 * falta, 6);
+  });
+
+  it("calla los desvíos de menos de medio punto", () => {
+    // «Te sobran 0,2 puntos de grasa» es ruido con pinta de precisión.
+    expect(desvios({ prot: 35.2, hc: 40.1, grasa: 24.7 }, { prot: 0.35, hc: 0.4, grasa: 0.25 }))
+      .toEqual([]);
+  });
+
+  it("con un objetivo a medias, solo habla de lo que se pidió", () => {
+    const d = desvios(PCT, { prot: 0.3 });
+    expect(d).toEqual([{ macro: "prot", puntos: -10 }]);
+  });
+
+  it("acepta el objetivo en porcentaje o en tanto por uno", () => {
+    expect(desvios(PCT, { prot: 35 })).toEqual(desvios(PCT, { prot: 0.35 }));
   });
 });
 

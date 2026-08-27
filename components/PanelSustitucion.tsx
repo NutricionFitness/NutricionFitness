@@ -164,7 +164,17 @@ export default function PanelSustitucion({
                 <th className="num">Prot</th>
                 <th className="num">HC</th>
                 <th className="num">Grasa</th>
-                {dirigido && <th className="num">Acerca</th>}
+                {dirigido && (
+                  <th
+                    className="num"
+                    title={
+                      "Cuánto acerca el cambio al reparto pedido, en puntos: un punto " +
+                      "es un 1% de las kilocalorías del día."
+                    }
+                  >
+                    Acerca
+                  </th>
+                )}
                 <th />
               </tr>
             </thead>
@@ -210,6 +220,12 @@ export default function PanelSustitucion({
           Las cantidades son las que aportan las mismas kilocalorías que{" "}
           {Math.round(gramos)} g de {nombreActual}, así que el total de la dieta no
           cambia: solo el reparto de macros.
+          {dirigido && (
+            <>
+              {" "}
+              Un <b>punto</b> es un 1% de las kilocalorías del día.
+            </>
+          )}
         </p>
       </td>
     </tr>
