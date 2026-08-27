@@ -3,17 +3,12 @@ import Link from "next/link";
 import { compararDietas } from "@/lib/dominio/comparar";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { cargarDieta } from "@/lib/supabase/dieta";
 
 export const dynamic = "force-dynamic";
 
-const CAMPOS = `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
-  estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en,
-  comidas ( id, dieta_id, nombre, orden, opcion_activa_id,
-    opciones ( id, comida_id, nombre, orden ),
-    componentes ( id, comida_id, opcion_id, ingrediente_id, gramos, orden, bloqueado,
-                  prioridad, min_g, max_g, paso_g,
-                  ingredientes ( id, nombre, kcal_100, prot_100, hc_100, grasa_100,
-                                 fibra_100, alcohol_100, estado ) ) )`;
+const CAMPOS_INGREDIENTE = `id, nombre, kcal_100, prot_100, hc_100, grasa_100,
+  fibra_100, alcohol_100, estado`;
 
 const n0 = (v: number) => Math.round(v).toLocaleString("es-ES");
 const n1 = (v: number) => (Math.round(v * 10) / 10).toLocaleString("es-ES");
@@ -39,12 +34,14 @@ export default async function Comparar({
     );
 
   const supabase = await clienteServidor();
+  // Por `cargarDieta` y no con un `select` anidado: desde la 0012 hay dos
+  // claves ajenas entre `comidas` y `opciones` y PostgREST no sabe cuál usar.
   const [ra, rb] = await Promise.all([
-    supabase.from("dietas").select(CAMPOS).eq("id", a).single(),
-    supabase.from("dietas").select(CAMPOS).eq("id", b).single(),
+    cargarDieta(supabase, a, CAMPOS_INGREDIENTE),
+    cargarDieta(supabase, b, CAMPOS_INGREDIENTE),
   ]);
 
-  if (ra.error || rb.error || !ra.data || !rb.data)
+  if (ra.error || rb.error || !ra.dieta || !rb.dieta)
     return (
       <>
         <h1>Comparar versiones</h1>
@@ -55,8 +52,8 @@ export default async function Comparar({
       </>
     );
 
-  const dietaA = ra.data as unknown as DietaCompleta;
-  const dietaB = rb.data as unknown as DietaCompleta;
+  const dietaA = ra.dieta;
+  const dietaB = rb.dieta;
   const c = compararDietas(dietaA, dietaB);
   const dKcal = c.totalB.kcal - c.totalA.kcal;
 

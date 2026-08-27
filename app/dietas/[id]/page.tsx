@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import CabeceraDieta from "@/components/CabeceraDieta";
 import EditorDieta from "@/components/EditorDieta";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { cargarDieta } from "@/lib/supabase/dieta";
 import { alergenosDeIngredientes, alergiasDePersona } from "@/app/alergenos/consultas";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
 import { aNumeroOpcional } from "@/lib/dominio/mapeo";
@@ -20,29 +21,28 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const supabase = await clienteServidor();
 
-  const { data, error } = await supabase
-    .from("dietas")
-    .select(
-      `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
-       estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en,
-       personas ( id, nombre, peso_kg ),
-       comidas ( id, dieta_id, nombre, orden, opcion_activa_id,
-         opciones ( id, comida_id, nombre, orden ),
-         componentes ( id, comida_id, opcion_id, ingrediente_id, gramos, orden,
-                       bloqueado, prioridad, min_g, max_g, paso_g,
-                       ingredientes ( ${CAMPOS_INGREDIENTE} ) ) )`,
-    )
-    .eq("id", id)
-    .single();
+  const cargada = await cargarDieta(
+    supabase,
+    id,
+    CAMPOS_INGREDIENTE,
+    undefined,
+    "personas ( id, nombre, peso_kg )",
+  );
 
-  if (error || !data) notFound();
+  // `notFound()` SOLO cuando de verdad no hay dieta. Antes cualquier error de
+  // la consulta acababa aquí, y un fallo de PostgREST —por ejemplo el de
+  // ambigüedad al anidar `opciones`— salía como un 404 pelado que no decía
+  // nada. Un error de la base es un error, y se enseña.
+  if (cargada.error) throw new Error(cargada.error);
+  if (!cargada.dieta) notFound();
+  const data = cargada.dieta;
 
   // Equivalencias crudo↔cocido de los ingredientes que hay en esta dieta.
   // Van en consulta aparte porque no cuelgan del ingrediente: son una relación
   // entre dos de ellos.
   const idsIngredientes = [
     ...new Set(
-      ((data as unknown as DietaCompleta).comidas ?? []).flatMap((m) =>
+      (data.comidas ?? []).flatMap((m) =>
         (m.componentes ?? []).map((c) => c.ingrediente_id),
       ),
     ),
@@ -92,8 +92,18 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
         }}
         nVersiones={nVersiones}
       />
+      {cargada.faltaMigracion && (
+        <p className="aviso-caja">
+          <span>
+            Esta dieta se está viendo <strong>sin opciones por comida</strong>: falta
+            aplicar <code>0012_opciones_comida.sql</code> en Supabase. Todo lo demás
+            funciona igual; en cuanto la apliques, aparecen las pestañas.
+          </span>
+        </p>
+      )}
+
       <EditorDieta
-        dieta={data as unknown as DietaCompleta}
+        dieta={data}
         equivalencias={equivalencias ?? []}
         alergias={alergias}
         alergenos={alergenos}

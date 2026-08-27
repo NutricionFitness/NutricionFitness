@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import HojaDieta from "@/components/HojaDieta";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { cargarDieta } from "@/lib/supabase/dieta";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
 import "@/app/hoja.css";
 
@@ -22,22 +23,16 @@ export default async function Imprimir({
   const { id } = await params;
   const supabase = await clienteServidor();
 
-  const { data, error } = await supabase
-    .from("dietas")
-    .select(
-      `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
-       estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en,
-       personas ( id, nombre ),
-       comidas ( id, dieta_id, nombre, orden, opcion_activa_id,
-         opciones ( id, comida_id, nombre, orden ),
-         componentes ( id, comida_id, opcion_id, ingrediente_id, gramos, orden,
-                       bloqueado, prioridad, min_g, max_g, paso_g,
-                       ingredientes ( ${CAMPOS_INGREDIENTE} ) ) )`,
-    )
-    .eq("id", id)
-    .single();
-
-  if (error || !data) notFound();
+  const cargada = await cargarDieta(
+    supabase,
+    id,
+    CAMPOS_INGREDIENTE,
+    undefined,
+    "personas ( id, nombre )",
+  );
+  if (cargada.error) throw new Error(cargada.error);
+  if (!cargada.dieta) notFound();
+  const data = cargada.dieta;
 
   const persona = (
     data as unknown as { personas: { id: string; nombre: string } | null }
