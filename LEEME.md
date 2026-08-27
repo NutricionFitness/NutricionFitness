@@ -140,7 +140,8 @@ scripts/derivar-alergenos.mjs           deduce alérgenos de LanguaL y del nombr
 scripts/probar-codigo.ts                qué trae Open Food Facts de un código
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución  (82 tests)
+  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución (107 tests)
+                  incluye plan-sustitucion.ts: qué cambiar en TODA la dieta
   openfoodfacts/  código de barras → ingrediente, con sus avisos             (51 tests)
   codigo-barras/  lector de EAN-13 y EAN-8, sin dependencias                 (17 tests)
   qr/             generador de códigos QR, sin dependencias                  (16 tests)
@@ -158,6 +159,7 @@ components/
   CabeceraPersona.tsx      renombrar y borrar persona
   AnadirComida.tsx
   PanelSustitucion.tsx     cambiar un alimento por otro
+  PlanDeCambios.tsx        qué cambiar en toda la dieta, en cadena
   DietaVacia.tsx           una dieta recién creada, antes del primer ingrediente
   BuscadorIngrediente.tsx
   FormularioContrasena.tsx
@@ -355,6 +357,43 @@ estás cambiando un café, otro café es una respuesta razonable.
 Con los tres filtros, lo que propone para subir proteína sin tocar las kcal son
 **legumbres** —judía pinta, alubia, lenteja—, que es la respuesta correcta de
 manual. Que salga sola, sin habérselo dicho, es buena señal.
+
+### La pregunta de antes: no «¿por qué lo cambio?» sino «¿cuál cambio?»
+
+El motor avisaba: «se pedía 35% de proteína y se ha llegado a 24,8%; moviendo
+gramos de los mismos alimentos no da más de sí: haría falta sustituir
+ingredientes». Y ahí se acababa. Con doce componentes, averiguar **cuál**
+significaba abrir el panel de sustitución fila por fila.
+
+`lib/dominio/plan-sustitucion.ts` mira la dieta entera y contesta. Tres cosas
+que no son obvias:
+
+**Una cadena, no un cambio.** Un solo cambio casi nunca llega. Cambiar el yogur
+de la cena acerca 21,7 puntos de 30: mejor que nada, pero la pregunta era «¿cómo
+llego al 35%?» y la respuesta seguía siendo «no llegas». Con tres encadenados se
+llega a 35/40/25. Cada paso se calcula **sobre el resultado de los anteriores**,
+así que la cadena se aplica entera y en orden: el segundo cambio mejora lo que
+mejora porque el primero ya está hecho. Las mejoras que anuncia cada paso suman
+exactamente lo que se recorre —hay una prueba que lo comprueba, porque si no
+cuadrara la cadena sería mentira—.
+
+**Voraz, y basta.** En cada paso se prueban todos los componentes contra todo el
+catálogo y se coge el que más acerca. El óptimo exacto son 12 × 1.076 elevado a
+tres: 2·10¹² combinaciones. Y aquí no hace falta el óptimo, hace falta una
+respuesta buena **que se entienda**: tres cambios que se leen de arriba abajo
+valen más que la combinación perfecta que nadie sabe por qué es la perfecta.
+Contra el catálogo real, doce componentes y tres pasos tardan 5–60 ms.
+
+**Un plan puede ser correcto y ridículo.** Probándolo de verdad salió «cambia el
+yogur de la cena por **437 g de berberechos**»: acerca diez puntos y no se lo
+come nadie. Adivinar qué es razonable depende de la persona, así que no se
+adivina: cada paso lleva un «no cambiar este» y un «otro sustituto», y se vuelve
+a calcular sin eso. Lo que sí hace la máquina es no proponer dos veces el mismo
+alimento en la misma cadena, ni uno que ya está en esa misma comida.
+
+Los alimentos que chocan con una alergia declarada **se quitan antes** de que el
+dominio los vea, y se dice cuántos. Los que no tienen los alérgenos revisados sí
+se proponen —dejarlos fuera vaciaría media propuesta— pero llevan su etiqueta.
 
 ### Comparar versiones es un problema de emparejar, no de restar
 

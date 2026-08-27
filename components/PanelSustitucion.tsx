@@ -39,7 +39,19 @@ export default function PanelSustitucion({
   onCerrar: () => void;
   onHecho: () => void;
 }) {
-  const [soloMismoGrupo, setSoloMismoGrupo] = useState(true);
+  /*
+   * Los dos interruptores arrancan según para qué se haya abierto el panel.
+   *
+   * Sin reparto pedido, la pregunta es «no tengo esto, ¿por qué lo cambio?», y
+   * ahí lo que se quiere es algo parecido: mismo grupo.
+   *
+   * Con reparto pedido, la pregunta es la contraria —«no llego al 35% de
+   * proteína»— y dentro del mismo grupo casi nunca hay respuesta: cambiar una
+   * merluza por un pollo a las mismas kilocalorías no mueve el reparto de la
+   * dieta ni medio punto. Lo que lo mueve es cruzar de grupo, así que se
+   * empieza con el filtro quitado.
+   */
+  const [soloMismoGrupo, setSoloMismoGrupo] = useState(!objetivo);
   const [dirigido, setDirigido] = useState(Boolean(objetivo));
   const [propuestas, setPropuestas] = useState<Sustitucion[] | null>(null);
   const [conAlergeno, setConAlergeno] = useState<Set<number>>(new Set());
@@ -107,15 +119,26 @@ export default function PanelSustitucion({
             />
             Solo del mismo grupo
           </label>
-          {objetivo && (
-            <label className="opcion" style={{ fontSize: 13.5 }}>
-              <input
-                type="checkbox"
-                checked={dirigido}
-                onChange={(e) => setDirigido(e.target.checked)}
-              />
-              Los que más acercan al reparto pedido
-            </label>
+          {/* La opción se enseña siempre, apagada cuando no puede funcionar.
+              Antes aparecía y desaparecía según un interruptor que está en otro
+              panel, sin decirlo en ninguna parte: se veía como que iba y venía
+              sola. Vale más un interruptor apagado con su motivo al lado. */}
+          <label
+            className="opcion"
+            style={{ fontSize: 13.5, opacity: objetivo ? 1 : 0.55 }}
+          >
+            <input
+              type="checkbox"
+              disabled={!objetivo}
+              checked={dirigido && Boolean(objetivo)}
+              onChange={(e) => setDirigido(e.target.checked)}
+            />
+            Los que más acercan al reparto pedido
+          </label>
+          {!objetivo && (
+            <span className="tenue" style={{ fontSize: 12.5 }}>
+              Para esto, pide un reparto distinto del actual en «Ajustar kcal».
+            </span>
           )}
         </div>
 
@@ -124,8 +147,12 @@ export default function PanelSustitucion({
         ) : propuestas.length === 0 ? (
           <p className="suave" style={{ margin: 0 }}>
             {dirigido
-              ? "Ningún cambio de este componente acerca al reparto pedido. Prueba con otro, o desmarca «solo del mismo grupo»."
-              : "No hay sustitutos razonables. Prueba a desmarcar «solo del mismo grupo»."}
+              ? soloMismoGrupo
+                ? "Ningún cambio dentro del mismo grupo acerca al reparto pedido, y es lo normal: a las mismas kilocalorías, dos alimentos del mismo grupo aportan casi lo mismo. Desmarca «solo del mismo grupo»."
+                : "Ningún cambio de este componente acerca al reparto pedido. Prueba con otro: el que más pesa en la dieta suele ser el que más la mueve."
+              : soloMismoGrupo
+                ? "No hay sustitutos razonables en este grupo. Prueba a desmarcar «solo del mismo grupo»."
+                : "No hay sustitutos razonables: ninguno cuadra en energía sin irse a una cantidad que nadie se comería."}
           </p>
         ) : (
           <div className="tabla">

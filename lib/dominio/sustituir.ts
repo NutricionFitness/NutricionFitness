@@ -196,6 +196,38 @@ export function distanciaAlObjetivo(
 }
 
 /**
+ * ¿Tiene sentido siquiera buscar «lo que más acerca» a este objetivo?
+ *
+ * Existe porque el panel de sustitución ofrecía el modo dirigido en
+ * situaciones donde **no podía funcionar**, y la respuesta era siempre la
+ * misma: «ningún cambio acerca al reparto pedido». Pasaba en dos casos:
+ *
+ *   · sin reparto pedido —el objetivo llegaba vacío—, y
+ *   · con el reparto pedido igual al que ya tiene la dieta, que es lo que
+ *     manda la pantalla cuando se activa el control de macros sin pedir otro.
+ *
+ * En los dos, la distancia de partida es cero. Y si la partida es cero,
+ * ninguna sustitución puede restarle nada: `mejora` sale cero o negativa y
+ * todas se descartan. No era un fallo del cálculo; era ofrecer un botón que no
+ * podía contestar otra cosa.
+ *
+ * El margen no es un número redondo elegido a ojo: es la **misma** mejora
+ * mínima que exige `rankearHaciaObjetivo`. Si la distancia de partida no llega
+ * a ella, la mejor sustitución posible —la que llevara la dieta exactamente al
+ * objetivo— tampoco la alcanzaría, así que no hay nada que ofrecer.
+ */
+export function mereceDirigido(
+  macrosDieta: Macros,
+  energiaDieta: number,
+  objetivoPct: Partial<Macros> | null | undefined,
+  margen: number = POR_DEFECTO.mejoraMinima,
+): boolean {
+  if (!(energiaDieta > 0)) return false;
+  if (!objetivoPct || !MACROS.some((m) => objetivoPct[m] !== undefined)) return false;
+  return distanciaAlObjetivo(macrosDieta, energiaDieta, objetivoPct) >= margen;
+}
+
+/**
  * Sustituciones que más acercan al reparto de macros pedido.
  *
  * Es la respuesta a «el ajuste dice que no llego al 35% de proteína».

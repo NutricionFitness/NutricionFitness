@@ -17,10 +17,13 @@ import {
 import AnadirComida from "./AnadirComida";
 import BuscadorIngrediente from "./BuscadorIngrediente";
 import PanelSustitucion from "./PanelSustitucion";
+import PlanDeCambios from "./PlanDeCambios";
 import DietaVacia from "./DietaVacia";
 import { IconoAyuda } from "./Iconos";
 import type { Alergeno, AlergenosIngrediente } from "@/app/alergenos/consultas";
+import type { DatosPlan } from "@/app/dietas/[id]/tipos";
 import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
+import { mereceDirigido } from "@/lib/dominio/sustituir";
 import {
   conversionDisponible,
   estadosIncoherentes,
@@ -98,6 +101,7 @@ function EditorCompleto({
   const [pedido, setPedido] = useState({ prot: "", hc: "", grasa: "" });
   const [holgura, setHolgura] = useState(40);
   const [sustituyendo, setSustituyendo] = useState<string | null>(null);
+  const [datosPlan, setDatosPlan] = useState<DatosPlan | null>(null);
   const [verLimites, setVerLimites] = useState(false);
   const [ayudaPrioridad, setAyudaPrioridad] = useState<string | null>(null);
 
@@ -257,15 +261,34 @@ function EditorCompleto({
   // La dieta declara si sus cantidades van en crudo o en cocido. Si además
   // contiene alimentos del estado contrario, los gramos no significan lo mismo
   // en todas las filas y conviene decirlo antes de que cuadre un número falso.
-  // Para el modo dirigido del panel de sustitución: si se está pidiendo un
-  // reparto de macros, se le pasa para que proponga los cambios que acercan.
-  const objetivoSustitucion = conMacros
-    ? {
-        macrosDieta: resultado.macrosInicial,
-        energiaDieta: resultado.energiaInicial,
-        objetivoPct: opciones.macrosObjetivo ?? {},
-      }
-    : undefined;
+  /**
+   * Para el modo dirigido del panel de sustitución.
+   *
+   * Solo se pasa si el reparto pedido es **distinto** del que la dieta ya
+   * tiene. Antes se pasaba siempre que estuviera activo el control de macros,
+   * y ahí se colaban dos casos en los que el objetivo era el reparto actual o
+   * estaba vacío: la distancia de partida es cero y entonces ninguna
+   * sustitución puede acercar, así que la respuesta era siempre «ningún cambio
+   * acerca al reparto pedido». `mereceDirigido` es esa comprobación, y está en
+   * el dominio con sus pruebas.
+   *
+   * Memorizado, además, porque viaja a las dependencias del efecto del panel.
+   */
+  const objetivoSustitucion = useMemo(
+    () =>
+      mereceDirigido(
+        resultado.macrosInicial,
+        resultado.energiaInicial,
+        opciones.macrosObjetivo,
+      )
+        ? {
+            macrosDieta: resultado.macrosInicial,
+            energiaDieta: resultado.energiaInicial,
+            objetivoPct: opciones.macrosObjetivo!,
+          }
+        : undefined,
+    [resultado.macrosInicial, resultado.energiaInicial, opciones.macrosObjetivo],
+  );
 
   const desajustes = estadosIncoherentes(
     filas.estado_cantidades,
@@ -281,7 +304,37 @@ function EditorCompleto({
   // persona. `choques` guarda, por componente, los nombres de los alérgenos, que
   // es lo que hay que poder leer sin abrir nada.
   const nombreAlergeno = new Map(alergias.map((a) => [a.id, a.nombre]));
-  const idsAlergia = new Set(alergias.map((a) => a.id));
+  // Memorizado porque viaja a `PanelSustitucion`, que lo lleva en las
+  // dependencias de su efecto de búsqueda: un `Set` nuevo en cada render hacía
+  // que el panel volviera a buscar cada vez que se movía un deslizante.
+  const idsAlergia = useMemo(() => new Set(alergias.map((a) => a.id)), [alergias]);
+
+  /**
+   * Abre el plan de toda la dieta con una foto de cómo está ahora.
+   *
+   * La foto se hace aquí, al pulsar, y no se vuelve a hacer: este cajón tiene
+   * deslizantes, y un objeto rehecho en cada render dispararía la búsqueda con
+   * cada movimiento y cambiaría el plan bajo la mano de quien lo está leyendo.
+   */
+  function abrirPlan() {
+    if (!objetivoSustitucion) return;
+    setDatosPlan({
+      componentes: comidas.flatMap((m) =>
+        (m.componentes ?? []).map((c) => ({
+          componenteId: c.id,
+          comida: m.nombre,
+          ingredienteId: Number(c.ingrediente_id),
+          gramos: Number(c.gramos),
+          // Bloqueado es «este se queda». Cambiarle el alimento entero sería
+          // más gordo todavía que moverle los gramos.
+          movible: !c.bloqueado,
+        })),
+      ),
+      ...objetivoSustitucion,
+      alergenos: [...idsAlergia],
+      conAlergias: idsAlergia.size > 0,
+    });
+  }
   const choques = new Map<string, string[]>();
   let sinRevisar = 0;
 
@@ -1076,6 +1129,16 @@ function EditorCompleto({
                 </p>
               ))}
 
+              {/* El aviso dice «haría falta sustituir ingredientes» y ahí se
+                  acababa: quien lo leía tenía que ir abriendo el panel de fila
+                  en fila para averiguar CUÁL. Esto lo contesta. */}
+              {objetivoSustitucion &&
+                avisosMotor.some((a) => a.includes("sustituir ingredientes")) && (
+                  <button type="button" className="boton-plan" onClick={abrirPlan}>
+                    Ver qué ingredientes cambiar
+                  </button>
+                )}
+
               {hayCambios && nTopes > 0 && (
                 <div className="nota-tope">
                   <strong>
@@ -1117,6 +1180,18 @@ function EditorCompleto({
           </p>
         </footer>
       </aside>
+
+      {datosPlan && (
+        <PlanDeCambios
+          datos={datosPlan}
+          dietaId={filas.id}
+          onCerrar={() => setDatosPlan(null)}
+          onHecho={() => {
+            setDatosPlan(null);
+            router.refresh();
+          }}
+        />
+      )}
     </>
   );
 }

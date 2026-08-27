@@ -10,6 +10,12 @@ import {
   type Macros,
   type Sustitucion,
 } from "@/lib/dominio/sustituir";
+import {
+  planDeSustitucion,
+  repartoPct,
+  type ComponenteCambiable,
+} from "@/lib/dominio/plan-sustitucion";
+import type { ComponenteParaPlan, PlanDeCambios } from "./tipos";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export async function actualizarComponente(
@@ -176,6 +182,176 @@ export async function buscarSustitutos(datos: {
     );
   }
   return rankearSustitutos(yo, datos.gramos, candidatos);
+}
+
+/** Las columnas con las que se construye un `Candidato`. */
+const COLUMNAS_CANDIDATO =
+  "id, nombre, grupo, estado, prot_100, hc_100, grasa_100, kcal_100, alergenos_revisados";
+
+/**
+ * Qué cambiar en toda la dieta para llegar al reparto pedido.
+ *
+ * El panel de una fila contesta «¿por qué cambio este alimento?»; esto contesta
+ * la de antes: **¿cuál cambio?**. Con doce componentes, ir abriendo el panel
+ * fila por fila para ver cuál mueve el reparto es trabajo de máquina.
+ *
+ * Aquí se hacen las tres cosas que necesitan la base —traer el catálogo, traer
+ * los ingredientes que la dieta usa ahora y apartar los que chocan con una
+ * alergia— y el cálculo lo hace `lib/dominio/plan-sustitucion`, que no sabe que
+ * existe Supabase y se prueba aparte.
+ *
+ * Los ingredientes actuales se releen del servidor en vez de fiarse de lo que
+ * manda la pantalla: los gramos son del usuario, pero los números de cada
+ * alimento son de la base.
+ */
+export async function buscarPlanDeCambios(datos: {
+  componentes: ComponenteParaPlan[];
+  macrosDieta: Macros;
+  energiaDieta: number;
+  objetivoPct: Partial<Macros>;
+  /** Los alérgenos de la persona de esta dieta. */
+  alergenos?: number[];
+  /** Componentes que el usuario ha dicho que no se toquen. */
+  excluir?: string[];
+  /** Alimentos que el usuario no quiere ver propuestos. */
+  sinEstos?: number[];
+  maxPasos?: number;
+}): Promise<PlanDeCambios> {
+  const pctInicial = repartoPct(datos.macrosDieta, datos.energiaDieta);
+  const vacio: PlanDeCambios = {
+    pasos: [],
+    distanciaInicial: 0,
+    distanciaFinal: 0,
+    pctInicial,
+    pctFinal: pctInicial,
+    motivo: "nada_que_hacer",
+    fueraPorAlergia: 0,
+    sinRevisar: 0,
+    mirados: 0,
+  };
+  if (!datos.componentes.length || !(datos.energiaDieta > 0)) return vacio;
+
+  const supabase = await clienteServidor();
+  const idsEnUso = [...new Set(datos.componentes.map((c) => c.ingredienteId))];
+  const alergenos = datos.alergenos ?? [];
+
+  const [catalogo, enUso, marcados] = await Promise.all([
+    supabase
+      .from("ingredientes")
+      .select(COLUMNAS_CANDIDATO)
+      .eq("preferente", true)
+      .gt("kcal_100", 0)
+      .limit(1200),
+    supabase.from("ingredientes").select(COLUMNAS_CANDIDATO).in("id", idsEnUso),
+    alergenos.length
+      ? supabase
+          .from("ingrediente_alergenos")
+          .select("ingrediente_id")
+          .in("alergeno_id", alergenos)
+      : Promise.resolve({ data: [] as { ingrediente_id: number }[] }),
+  ]);
+
+  if (!catalogo.data || !enUso.data) return vacio;
+
+  type Fila = {
+    id: number; nombre: string; grupo: string | null; estado: string | null;
+    prot_100: number; hc_100: number; grasa_100: number; kcal_100: number;
+    alergenos_revisados: boolean | null;
+  };
+  const aCandidato = (f: Fila): Candidato => ({
+    id: Number(f.id),
+    nombre: f.nombre,
+    grupo: f.grupo,
+    estado: f.estado ?? "desconocido",
+    prot: Number(f.prot_100),
+    hc: Number(f.hc_100),
+    grasa: Number(f.grasa_100),
+    kcal100: Number(f.kcal_100),
+  });
+
+  const revisado = new Map<number, boolean>();
+  for (const f of [...catalogo.data, ...enUso.data] as unknown as Fila[])
+    revisado.set(Number(f.id), Boolean(f.alergenos_revisados));
+
+  // Fuera de la propuesta los que chocan con una alergia declarada. No se
+  // avisa de ellos: se quitan. Un sustituto que hay que descartar por alergia
+  // no es una propuesta, es un susto.
+  const conAlergeno = new Set(
+    ((marcados.data ?? []) as { ingrediente_id: number }[]).map((f) =>
+      Number(f.ingrediente_id),
+    ),
+  );
+
+  const candidatosTodos = (catalogo.data as unknown as Fila[]).map(aCandidato);
+  const candidatos = candidatosTodos.filter((c) => !conAlergeno.has(c.id));
+
+  const porId = new Map<number, Candidato>();
+  for (const f of enUso.data as unknown as Fila[]) porId.set(Number(f.id), aCandidato(f));
+
+  const componentes: ComponenteCambiable[] = [];
+  for (const c of datos.componentes) {
+    const ing = porId.get(c.ingredienteId);
+    // Un componente cuyo ingrediente no se puede leer no se propone; el resto
+    // de la dieta sigue valiendo.
+    if (ing) componentes.push({ ...c, ingrediente: ing });
+  }
+
+  const plan = planDeSustitucion(
+    componentes,
+    candidatos,
+    datos.macrosDieta,
+    datos.energiaDieta,
+    datos.objetivoPct,
+    {
+      maxPasos: datos.maxPasos,
+      excluir: new Set(datos.excluir ?? []),
+      sinEstos: new Set(datos.sinEstos ?? []),
+    },
+  );
+
+  const pasos = plan.pasos.map((p) => ({
+    ...p,
+    revisado: revisado.get(p.candidato.id) ?? false,
+  }));
+
+  return {
+    ...plan,
+    pasos,
+    fueraPorAlergia: candidatosTodos.length - candidatos.length,
+    sinRevisar: pasos.filter((p) => !p.revisado).length,
+    mirados: componentes.filter((c) => c.movible).length,
+  };
+}
+
+/**
+ * Aplica la cadena de cambios, en orden.
+ *
+ * En orden y parando al primer fallo, para que lo que quede aplicado sea
+ * siempre un **principio** de la cadena y nunca un trozo suelto. Cada paso es
+ * isoenergético por sí mismo, así que media cadena deja una dieta coherente:
+ * mejorada de menos, pero coherente.
+ */
+export async function aplicarPlan(
+  cambios: Array<{ componenteId: string; ingredienteId: number; gramos: number }>,
+  dietaId: string,
+): Promise<{ aplicados: number; error: string | null }> {
+  const supabase = await clienteServidor();
+  let aplicados = 0;
+
+  for (const c of cambios) {
+    const { error } = await supabase
+      .from("componentes")
+      .update({ ingrediente_id: c.ingredienteId, gramos: c.gramos })
+      .eq("id", c.componenteId);
+    if (error) {
+      revalidatePath(`/dietas/${dietaId}`);
+      return { aplicados, error: error.message };
+    }
+    aplicados++;
+  }
+
+  revalidatePath(`/dietas/${dietaId}`);
+  return { aplicados, error: null };
 }
 
 // ---------------------------------------------------------------------------

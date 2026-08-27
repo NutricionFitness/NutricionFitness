@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   distanciaAlObjetivo,
   gramosIsoenergeticos,
+  mereceDirigido,
   rankearHaciaObjetivo,
   rankearSustitutos,
   type Candidato,
+  type Macros,
 } from "./sustituir";
 
 const ing = (
@@ -246,5 +248,95 @@ describe("sustituciones dirigidas a un objetivo", () => {
     const s = r[0];
     const deltaEnergia = 4 * s.delta.prot + 4 * s.delta.hc + 9 * s.delta.grasa;
     expect(deltaEnergia).toBeCloseTo(0, 6);
+  });
+});
+
+/**
+ * El fallo de la fase 7 que se vio usándola: el panel ofrecía «los que más
+ * acercan al reparto pedido» en sitios donde la respuesta solo podía ser
+ * «ningún cambio acerca», y encima aparecía y desaparecía sin explicación.
+ *
+ * Estas pruebas fijan la regla de cuándo tiene sentido ofrecerlo, y por qué.
+ */
+describe("cuándo tiene sentido el modo dirigido", () => {
+  // Una dieta de 2.000 kcal repartida 25/50/25.
+  const dieta: Macros = { prot: 125, hc: 250, grasa: 55.6 };
+  const energia = 4 * dieta.prot + 4 * dieta.hc + 9 * dieta.grasa;
+  const actual = {
+    prot: (400 * dieta.prot) / energia,
+    hc: (400 * dieta.hc) / energia,
+    grasa: (900 * dieta.grasa) / energia,
+  };
+
+  it("sin reparto pedido, no", () => {
+    expect(mereceDirigido(dieta, energia, null)).toBe(false);
+    expect(mereceDirigido(dieta, energia, undefined)).toBe(false);
+    expect(mereceDirigido(dieta, energia, {})).toBe(false);
+  });
+
+  it("con el reparto que la dieta YA tiene, tampoco", () => {
+    // Éste era el caso de verdad: al activar el control de macros sin pedir
+    // otro reparto, la pantalla mandaba el actual como objetivo.
+    const mismo = {
+      prot: actual.prot / 100,
+      hc: actual.hc / 100,
+      grasa: actual.grasa / 100,
+    };
+    expect(distanciaAlObjetivo(dieta, energia, mismo)).toBeCloseTo(0, 6);
+    expect(mereceDirigido(dieta, energia, mismo)).toBe(false);
+  });
+
+  it("y en esos casos, efectivamente, no hay nada que proponer", () => {
+    // La otra mitad de la demostración: no es que se oculte por precaución,
+    // es que el cálculo no puede devolver nada.
+    const arroz = ing(1, "Arroz", 7, 78, 0.6);
+    const otros = [
+      ing(2, "Lentejas", 24, 54, 1.8, "Legumbres"),
+      ing(3, "Pollo", 22, 0, 2.5, "Carnes y derivados"),
+      ing(4, "Pasta", 12, 74, 1.5),
+    ];
+    const mismo = {
+      prot: actual.prot / 100,
+      hc: actual.hc / 100,
+      grasa: actual.grasa / 100,
+    };
+    expect(rankearHaciaObjetivo(arroz, 100, otros, dieta, energia, mismo)).toEqual([]);
+    expect(rankearHaciaObjetivo(arroz, 100, otros, dieta, energia, {})).toEqual([]);
+  });
+
+  it("con un reparto distinto, sí, y entonces hay propuestas", () => {
+    const pedido = { prot: 0.35, hc: 0.4, grasa: 0.25 };
+    expect(mereceDirigido(dieta, energia, pedido)).toBe(true);
+
+    const arroz = ing(1, "Arroz", 7, 78, 0.6);
+    const otros = [
+      ing(2, "Lentejas", 24, 54, 1.8, "Legumbres"),
+      ing(3, "Pollo", 22, 0, 2.5, "Carnes y derivados"),
+    ];
+    const r = rankearHaciaObjetivo(arroz, 100, otros, dieta, energia, pedido);
+    expect(r.length).toBeGreaterThan(0);
+    expect(r[0].mejora!).toBeGreaterThan(0);
+  });
+
+  it("el margen es el mismo que exige la búsqueda, ni más ni menos", () => {
+    // Justo por debajo de la mejora mínima no puede pasar nada el filtro,
+    // aunque la sustitución llevara la dieta exactamente al objetivo.
+    const casi = { prot: actual.prot / 100 + 0.002, hc: actual.hc / 100, grasa: actual.grasa / 100 };
+    const d = distanciaAlObjetivo(dieta, energia, casi);
+    expect(d).toBeLessThan(0.5);
+    expect(mereceDirigido(dieta, energia, casi)).toBe(false);
+
+    const lejos = { prot: actual.prot / 100 + 0.02, hc: actual.hc / 100, grasa: actual.grasa / 100 };
+    expect(distanciaAlObjetivo(dieta, energia, lejos)).toBeGreaterThan(0.5);
+    expect(mereceDirigido(dieta, energia, lejos)).toBe(true);
+  });
+
+  it("sin energía no se ofrece: no hay reparto que calcular", () => {
+    expect(mereceDirigido(dieta, 0, { prot: 0.35 })).toBe(false);
+  });
+
+  it("da igual pedir el reparto en tantos por uno o en tantos por ciento", () => {
+    expect(mereceDirigido(dieta, energia, { prot: 0.35, hc: 0.4, grasa: 0.25 })).toBe(true);
+    expect(mereceDirigido(dieta, energia, { prot: 35, hc: 40, grasa: 25 })).toBe(true);
   });
 });

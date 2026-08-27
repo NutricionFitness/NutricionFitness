@@ -2179,3 +2179,239 @@ button:has(> svg + span) {
     max-width: none;
   }
 }
+
+/* ===========================================================================
+   Fase 16 — el plan de cambios de toda la dieta
+   ===========================================================================
+   El motor avisaba de que «haría falta sustituir ingredientes» y ahí se
+   acababa. El botón nace de ese aviso y va vestido como él: en ámbar, pegado
+   al texto, para que se lea como la continuación de la frase y no como otra
+   acción más del cajón. El verde de esta app es «esta es LA acción» y aquí
+   está ocupado por «Guardar como nueva versión».                             */
+
+.boton-plan {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--aviso);
+  background: var(--aviso-suave);
+  border-color: transparent;
+}
+.boton-plan:hover:not(:disabled) {
+  background: var(--aviso-suave);
+  border-color: var(--aviso);
+}
+
+.plan-cambios[open] {
+  display: grid;
+}
+.plan-cambios {
+  width: min(640px, 94vw);
+  max-height: 88dvh;
+  overflow: auto;
+  gap: 12px;
+  padding: 20px 22px 18px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--tinta);
+  box-shadow: var(--sombra-3);
+  align-content: start;
+}
+.plan-cambios::backdrop {
+  background: rgba(12, 20, 14, 0.55);
+}
+.plan-cambios header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.plan-cambios h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  flex: 1;
+}
+.plan-cambios p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.plan-cambios .nota {
+  font-size: 12.5px;
+}
+
+/* «20/48/32», con cada cifra del color de su macro: es el mismo código de
+   color de la barra de la dieta y de la hoja impresa. */
+.plan-cambios .reparto {
+  font-family: var(--cifras);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.plan-cambios .reparto.pequeno {
+  font-size: 12.5px;
+}
+.plan-cambios .reparto i {
+  color: var(--tenue);
+  font-style: normal;
+  padding: 0 1px;
+}
+.plan-cambios .reparto .prot { color: var(--m-prot); }
+.plan-cambios .reparto .hc { color: var(--m-hc); }
+.plan-cambios .reparto .grasa { color: var(--m-grasa); }
+.plan-cambios .reparto.pedido b {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.plan-cambios .de-a {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plan-cambios ol.pasos {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-cambios ol.pasos > li {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--panel-2);
+  padding: 10px 12px;
+}
+.plan-cambios .cabeza {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.plan-cambios .orden {
+  flex: none;
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--acento-suave);
+  color: var(--acento);
+  font-family: var(--cifras);
+  font-size: 12px;
+  font-weight: 600;
+}
+.plan-cambios .cambio {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.plan-cambios .cambio > .tenue {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.plan-cambios .cambio s {
+  color: var(--suave);
+}
+.plan-cambios .cambio .chip {
+  margin-left: 6px;
+}
+.plan-cambios .acerca {
+  flex: none;
+  font-family: var(--cifras);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bien);
+}
+.plan-cambios .pie {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--linea);
+  font-size: 12.5px;
+}
+.plan-cambios .pie .separa {
+  flex: 1;
+}
+.plan-cambios .acciones {
+  display: flex;
+  gap: 14px;
+  margin-left: auto;
+}
+.plan-cambios .pie button.enlace {
+  font-size: 12.5px;
+}
+/* Nada de esta fila parte por la mitad: «queda\A en» o «no cambiar\A este» se
+   leen como dos cosas distintas. */
+.plan-cambios .pie > * {
+  white-space: nowrap;
+}
+
+.plan-cambios .llegada {
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  background: var(--acento-suave);
+  color: var(--tinta);
+}
+
+.plan-cambios .descartes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.plan-cambios .chip.quitable {
+  cursor: pointer;
+  padding: 1px 9px;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+.plan-cambios .chip.quitable:hover {
+  border-color: var(--peligro);
+  color: var(--peligro);
+  background: var(--panel-2);
+}
+
+.plan-cambios footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.plan-cambios footer p {
+  flex-basis: 100%;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* En el móvil la cifra de lo que acerca cabe mal a la derecha del nombre:
+   baja a la línea de abajo, junto al reparto que deja. */
+@media (max-width: 520px) {
+  .plan-cambios {
+    padding: 16px 14px 14px;
+  }
+  /* Estrecho: el separador desaparece y las acciones caen a la línea de
+     abajo si no caben, en vez de encogerse hasta partirse. */
+  .plan-cambios .pie {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .plan-cambios .pie .separa {
+    display: none;
+  }
+  .plan-cambios footer button {
+    flex: 1;
+    justify-content: center;
+  }
+}
