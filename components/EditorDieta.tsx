@@ -1055,6 +1055,7 @@ function EditorCompleto({
               titulo={comida.nombre}
               tot={tot}
               propuesto={totPropuesto}
+              pesoKg={pesoKg}
             />
 
             <footer>

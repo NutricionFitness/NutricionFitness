@@ -26,13 +26,19 @@ export default function TotalesDe({
   titulo: string;
   tot: Totales;
   propuesto: Totales | null;
+  /** El peso de la persona. Sin él no hay gramos por kilo que enseñar. */
   pesoKg?: number | null;
-  /** El del día lleva además los gramos por kilo, que solo tienen sentido ahí. */
+  /** El del día se pinta más marcado y lleva su nombre en vez de «Suma». */
   dia?: boolean;
 }) {
-  // Los g/kg son una cifra DIARIA: «2 g de proteína por kilo» se dice de lo que
-  // se come en un día, no de lo que se come en un desayuno.
-  const gk = dia ? porKilo(propuesto?.macros ?? tot.macros, pesoKg) : null;
+  // Los g/kg se enseñan también por comida, no solo en el día: la referencia
+  // («1,8 g de proteína por kilo») es diaria, pero al repartirla entre comidas
+  // se quiere ver cuánto de esa cuota lleva cada una.
+  //
+  // Con un decimal, sin embargo, la cifra de una comida no dice nada: 3,2 g de
+  // grasa en 78 kg salen «0 g/kg», que parece un fallo. Por eso el día lleva un
+  // decimal —es la escala en que se prescribe— y la comida dos.
+  const gk = porKilo(propuesto?.macros ?? tot.macros, pesoKg);
   const t = propuesto ?? tot;
 
   return (
@@ -64,9 +70,13 @@ export default function TotalesDe({
           {gk && (
             <small
               className="por-kilo"
-              title={`Gramos de ${ETIQUETA_LARGA[m]} por cada kilo de peso de la persona`}
+              title={
+                dia
+                  ? `Gramos de ${ETIQUETA_LARGA[m]} al día por cada kilo de peso de la persona`
+                  : `Lo que aporta esta comida a los gramos de ${ETIQUETA_LARGA[m]} por kilo del día`
+              }
             >
-              ({gk[m].toLocaleString("es-ES", { maximumFractionDigits: 1 })} g/kg)
+              ({gk[m].toLocaleString("es-ES", { maximumFractionDigits: dia ? 1 : 2 })} g/kg)
             </small>
           )}
         </span>
