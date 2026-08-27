@@ -2415,3 +2415,379 @@ button:has(> svg + span) {
     justify-content: center;
   }
 }
+
+/* ===========================================================================
+   Fase 18 — los totales a la vista
+   ===========================================================================
+   Tres cosas que estaban a un `title` de distancia: el reparto de la barra
+   pegajosa (había que pasar el ratón por encima, y en el móvil no hay ratón),
+   lo que suma cada comida, y los gramos por kilo de peso.                    */
+
+/* El reparto en cifras, con el color de cada macro. Es el mismo lenguaje que
+   el diálogo del plan de cambios: mismos colores, misma monoespaciada. */
+.reparto-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.reparto-vivo .cifras {
+  font-family: var(--cifras);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.reparto-vivo .cifras i {
+  color: var(--tenue);
+  font-style: normal;
+  font-weight: 400;
+  padding: 0 1px;
+}
+.reparto-vivo .cifras .prot { color: var(--m-prot); }
+.reparto-vivo .cifras .hc { color: var(--m-hc); }
+.reparto-vivo .cifras .grasa { color: var(--m-grasa); }
+
+/* Por debajo de 640 px la barra se va —no cabe— pero las cifras se quedan:
+   son lo que se pidió ver siempre, y ocupan tres caracteres. */
+@media (max-width: 640px) {
+  .barra-dieta .reparto-vivo .cifras {
+    font-size: 12.5px;
+  }
+}
+
+/* --- lo que suma una comida, y lo que suma el día --- */
+
+.totales {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--linea);
+  background: var(--panel-2);
+  font-size: 13px;
+}
+.totales .que {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tenue);
+}
+.totales .dato {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+.totales .cifra {
+  font-family: var(--cifras);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.totales .cifra.propuesta {
+  color: var(--acento);
+}
+.totales small {
+  font-size: 11.5px;
+  color: var(--tenue);
+}
+.totales .etiqueta-macro {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.totales .etiqueta-macro.prot { color: var(--m-prot); }
+.totales .etiqueta-macro.hc { color: var(--m-hc); }
+.totales .etiqueta-macro.grasa { color: var(--m-grasa); }
+.totales .por-kilo {
+  padding-left: 2px;
+  font-family: var(--cifras);
+  font-size: 11px;
+}
+.totales .separa {
+  flex: 1;
+  min-width: 0;
+}
+
+/* El del día se despega de la última comida y pesa más: es el número que se
+   mira al final. */
+.totales.dia {
+  margin: 14px 0 4px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  padding: 12px 16px;
+  font-size: 13.5px;
+  background: var(--panel);
+}
+.totales.dia .que {
+  color: var(--tinta);
+}
+
+@media (max-width: 520px) {
+  .totales {
+    gap: 4px 12px;
+  }
+  .totales .separa {
+    display: none;
+  }
+}
+
+/* Los dos botones de la barra, juntos: si no caben, bajan los dos. */
+.barra-dieta .acciones-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+@media (max-width: 640px) {
+  .barra-dieta .separa {
+    display: none;
+  }
+}
+
+/* ===========================================================================
+   Fase 19 — el comparador público
+   ===========================================================================
+   La única pantalla de la app pensada para alguien que no ha entrado y que no
+   sabe qué es esto. De ahí la cabecera que explica de qué va, y el pie que
+   dice de dónde salen los datos: en una página abierta, la procedencia no es
+   letra pequeña.                                                             */
+
+.cabecera-publica {
+  max-width: 640px;
+  margin-bottom: 22px;
+}
+.cabecera-publica h1 {
+  margin-bottom: 6px;
+}
+.cabecera-publica p {
+  margin: 0;
+  color: var(--suave);
+  line-height: 1.55;
+}
+
+.pie-publico {
+  max-width: 720px;
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid var(--linea);
+  color: var(--tenue);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.pie-publico p {
+  margin: 0 0 8px;
+}
+
+.comparador {
+  display: grid;
+  gap: 20px;
+  max-width: 940px;
+}
+/* La cura de la fase 12, otra vez: un item de grid mide `min-width: auto`, así
+   que un `input` dentro —que tiene un ancho mínimo intrínseco grande— ensancha
+   la columna y desborda la página entera en el móvil. Medido: 550 px de ancho
+   en una ventana de 390 antes de esta línea. */
+.comparador > *,
+.comparador .paso > *,
+.comparador .cifras-ficha > * {
+  min-width: 0;
+}
+
+/* --- la fila de arriba: alimento y cantidad --- */
+.comparador .paso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.comparador .campo-gramos {
+  display: grid;
+  gap: 4px;
+}
+.comparador .con-unidad {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.comparador .con-unidad input {
+  width: 92px;
+  font-family: var(--cifras);
+}
+
+/* --- el buscador --- */
+.buscador-publico {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  /* Con tope: sin él, en pantalla ancha el campo se estira medio metro y la
+     cantidad se va sola al otro extremo. */
+  flex: 1 1 280px;
+  max-width: 460px;
+  min-width: 0;
+}
+.buscador-publico input {
+  width: 100%;
+}
+.opciones-buscador {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 300px;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  box-shadow: var(--sombra-2);
+}
+.opciones-buscador li.vacio {
+  padding: 10px 12px;
+  color: var(--tenue);
+  font-size: 13.5px;
+}
+.opciones-buscador button {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 8px 10px;
+  border-radius: var(--r-s);
+  font: inherit;
+}
+.opciones-buscador button:hover {
+  background: var(--acento-suave);
+  border-color: transparent;
+}
+.opciones-buscador button small {
+  color: var(--tenue);
+  font-size: 11.5px;
+}
+
+/* --- la ficha del alimento elegido --- */
+.ficha-alimento {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  padding: 16px 18px;
+}
+.ficha-alimento .titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+.ficha-alimento h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.ficha-alimento .chips {
+  display: flex;
+  gap: 6px;
+}
+.ficha-alimento .cifras-ficha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 14px 0 12px;
+}
+.ficha-alimento .grande {
+  display: grid;
+}
+.ficha-alimento .grande b {
+  font-family: var(--cifras);
+  font-size: 30px;
+  line-height: 1.1;
+}
+.ficha-alimento .macro {
+  display: grid;
+}
+.ficha-alimento .macro b {
+  font-family: var(--cifras);
+  font-size: 17px;
+}
+.ficha-alimento small {
+  color: var(--tenue);
+  font-size: 11.5px;
+}
+.ficha-alimento .por-cien {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+}
+
+.etiqueta-macro {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.etiqueta-macro.prot { color: var(--m-prot); }
+.etiqueta-macro.hc { color: var(--m-hc); }
+.etiqueta-macro.grasa { color: var(--m-grasa); }
+
+/* --- los dos bloques de abajo --- */
+.comparador .bloque {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  padding: 14px 18px 16px;
+}
+.comparador .cabeza-bloque {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+.comparador .cabeza-bloque h2 {
+  margin: 0;
+  font-size: 16px;
+  flex: 1 1 auto;
+}
+.comparador .mandos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  font-size: 13.5px;
+}
+.comparador .pie-bloque {
+  margin-top: 12px;
+  font-size: 12.5px;
+}
+
+/* La tabla de los dos, cara a cara: la primera columna es la etiqueta de la
+   fila, así que va en negrita y sin alinear a la derecha. */
+.cara-a-cara th[scope="row"] {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cara-a-cara tr.cantidad td b {
+  font-family: var(--cifras);
+  font-size: 16px;
+}
+
+.ajuste-cuenta {
+  display: grid;
+  gap: 8px;
+}
+.ajuste-cuenta p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .comparador .paso {
+    gap: 10px;
+  }
+  .ficha-alimento .cifras-ficha {
+    gap: 10px 20px;
+  }
+}

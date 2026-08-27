@@ -22,7 +22,9 @@ import DietaVacia from "./DietaVacia";
 import { IconoAyuda } from "./Iconos";
 import type { Alergeno, AlergenosIngrediente } from "@/app/alergenos/consultas";
 import type { DatosPlan } from "@/app/dietas/[id]/tipos";
-import { aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
+import { aComponente, aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
+import { totalesDe } from "@/lib/dominio/totales";
+import TotalesDe from "./TotalesDieta";
 import { mereceDirigido } from "@/lib/dominio/sustituir";
 import {
   conversionDisponible,
@@ -76,12 +78,14 @@ function EditorCompleto({
   alergias,
   alergenos,
   persona,
+  pesoKg,
 }: {
   filas: DietaCompleta;
   equivalencias: Equivalencia[];
   alergias: Alergeno[];
   alergenos: Record<number, AlergenosIngrediente>;
   persona: string | null;
+  pesoKg: number | null;
 }) {
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
@@ -290,6 +294,22 @@ function EditorCompleto({
     [resultado.macrosInicial, resultado.energiaInicial, opciones.macrosObjetivo],
   );
 
+  // El total del día sale de los mismos componentes que el motor, en el mismo
+  // orden, así que cuadra con la suma de las comidas por construcción.
+  const totalDia = useMemo(
+    () => totalesDe(dieta.componentes, filas.modelo_energia ?? "atwater"),
+    [dieta, filas.modelo_energia],
+  );
+  const totalDiaPropuesto = hayCambios
+    ? totalesDe(
+        dieta.componentes.map((c, i) => ({
+          ...c,
+          gramos: resultado.cambios[i]?.gramosDespues ?? c.gramos,
+        })),
+        filas.modelo_energia ?? "atwater",
+      )
+    : null;
+
   const desajustes = estadosIncoherentes(
     filas.estado_cantidades,
     comidas.flatMap((m) => (m.componentes ?? []).map((c) => c.ingredientes.estado)),
@@ -366,11 +386,24 @@ function EditorCompleto({
           <span>kcal ahora</span>
         </div>
 
-        <div className="mini-macros" role="img" aria-label={reparto} title={reparto}>
-          <i className="prot" style={{ flex: pctActual.prot, background: "var(--m-prot)" }} />
-          <i className="hc" style={{ flex: pctActual.hc, background: "var(--m-hc)" }} />
-          <i className="grasa" style={{ flex: pctActual.grasa, background: "var(--m-grasa)" }} />
-        </div>
+        {/* Los números al lado y no dentro: dentro no caben —la barra mide 108
+            px— y un tramo del 3% no puede enseñar su cifra. Al lado se leen
+            los tres siempre, que es lo que se pidió, y la barra se queda con
+            lo que sabe hacer, que es la proporción de un vistazo. */}
+        <span className="reparto-vivo" title={reparto} aria-label={reparto}>
+          <span className="mini-macros" role="img" aria-hidden="true">
+            <i className="prot" style={{ flex: pctActual.prot, background: "var(--m-prot)" }} />
+            <i className="hc" style={{ flex: pctActual.hc, background: "var(--m-hc)" }} />
+            <i className="grasa" style={{ flex: pctActual.grasa, background: "var(--m-grasa)" }} />
+          </span>
+          <span className="cifras" aria-hidden="true">
+            <b className="prot">{Math.round(pctActual.prot)}</b>
+            <i>/</i>
+            <b className="hc">{Math.round(pctActual.hc)}</b>
+            <i>/</i>
+            <b className="grasa">{Math.round(pctActual.grasa)}</b>
+          </span>
+        </span>
 
         {hayCambios && (
           <span className="pastilla avisa">
@@ -389,6 +422,10 @@ function EditorCompleto({
 
         <span className="separa" />
 
+        {/* Los dos botones en su caja: en pantalla estrecha la barra ya venía
+            partiéndose en dos filas, y sin agrupar caía uno solo a la segunda,
+            suelto a la izquierda. Agrupados bajan juntos y a la derecha. */}
+        <span className="acciones-barra">
         <button
           aria-pressed={verLimites}
           title="Enseñar las columnas de mínimo y máximo de cada componente"
@@ -405,6 +442,7 @@ function EditorCompleto({
         <button className="principal" onClick={() => setCajon(true)}>
           Ajustar kcal
         </button>
+        </span>
       </div>
 
       {choques.size > 0 && (
@@ -489,6 +527,21 @@ function EditorCompleto({
           const cb = porId.get(c.id);
           return t + (cb ? cb.kcalDespues : 0);
         }, 0);
+
+        // Los totales de la comida salen del MOTOR sobre sus componentes, no de
+        // una suma escrita aquí: así una comida y su dieta no pueden decir
+        // cosas distintas si algún día cambia cómo se calcula la energía.
+        const suyos = componentes.map((c) => aComponente(c, comida.nombre));
+        const tot = totalesDe(suyos, filas.modelo_energia ?? "atwater");
+        const totPropuesto = hayCambios
+          ? totalesDe(
+              suyos.map((x, i) => ({
+                ...x,
+                gramos: porId.get(componentes[i].id)?.gramosDespues ?? x.gramos,
+              })),
+              filas.modelo_energia ?? "atwater",
+            )
+          : null;
 
         return (
           <section key={comida.id} className="comida">
@@ -866,6 +919,12 @@ function EditorCompleto({
               </table>
             </div>
 
+            <TotalesDe
+              titulo={comida.nombre}
+              tot={tot}
+              propuesto={totPropuesto}
+            />
+
             <footer>
               <BuscadorIngrediente
                 alergias={idsAlergia}
@@ -881,6 +940,14 @@ function EditorCompleto({
           </section>
         );
       })}
+
+      <TotalesDe
+        titulo="Total del día"
+        tot={totalDia}
+        propuesto={totalDiaPropuesto}
+        pesoKg={pesoKg}
+        dia
+      />
 
       <AnadirComida dietaId={filas.id} orden={comidas.length} onHecho={() => router.refresh()} />
 
@@ -1196,6 +1263,7 @@ function EditorCompleto({
   );
 }
 
+
 /**
  * Punto de entrada.
  *
@@ -1210,12 +1278,15 @@ export default function EditorDieta({
   alergias = [],
   alergenos = {},
   persona = null,
+  pesoKg = null,
 }: {
   dieta: DietaCompleta;
   equivalencias?: Equivalencia[];
   alergias?: Alergeno[];
   alergenos?: Record<number, AlergenosIngrediente>;
   persona?: string | null;
+  /** Para leer los macros en gramos por kilo. Nulo si no se sabe. */
+  pesoKg?: number | null;
 }) {
   return contarComponentes(filas) === 0 ? (
     <DietaVacia filas={filas} />
@@ -1226,6 +1297,7 @@ export default function EditorDieta({
       alergias={alergias}
       alergenos={alergenos}
       persona={persona}
+      pesoKg={pesoKg}
     />
   );
 }

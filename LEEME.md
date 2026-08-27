@@ -132,7 +132,9 @@ supabase/
   migraciones/0007_alergenos.sql        los catorce del Anexo II y las alergias
   migraciones/0008_codigo_barras.sql    código de barras en el ingrediente
   migraciones/0009_escaneo_remoto.sql   escanear con la cámara de otro aparato
-  pruebas/                              andamio y pruebas contra PostgreSQL local
+  migraciones/0010_peso_persona.sql     el peso, para leer los macros en g/kg
+  migraciones/0011_catalogo_publico.sql  el comparador abierto, sin sesión
+  pruebas/                              andamio y 7 baterías contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
 scripts/cargar-medidas.mjs
@@ -140,7 +142,7 @@ scripts/derivar-alergenos.mjs           deduce alérgenos de LanguaL y del nombr
 scripts/probar-codigo.ts                qué trae Open Food Facts de un código
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución (107 tests)
+  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución (131 tests)
                   incluye plan-sustitucion.ts: qué cambiar en TODA la dieta
   openfoodfacts/  código de barras → ingrediente, con sus avisos             (51 tests)
   codigo-barras/  lector de EAN-13 y EAN-8, sin dependencias                 (17 tests)
@@ -150,6 +152,7 @@ lib/
 app/
   login, cuenta, personas, personas/[id], dietas/[id],
   dietas/[id]/historial, dietas/[id]/imprimir, comparar, ingredientes
+  comparador               PÚBLICA: comparar alimentos sin iniciar sesión
   hoja.css                 el papel: estilos de pantalla e impresión
 components/
   EditorDieta.tsx          la pantalla de trabajo
@@ -160,6 +163,9 @@ components/
   AnadirComida.tsx
   PanelSustitucion.tsx     cambiar un alimento por otro
   PlanDeCambios.tsx        qué cambiar en toda la dieta, en cadena
+  TotalesDieta.tsx         lo que suma una comida, y lo que suma el día
+  Comparador.tsx           el comparador público de alimentos
+  CatalogoPublico.tsx      el interruptor de publicar tu catálogo
   DietaVacia.tsx           una dieta recién creada, antes del primer ingrediente
   BuscadorIngrediente.tsx
   FormularioContrasena.tsx

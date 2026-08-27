@@ -6,6 +6,7 @@ import EditorDieta from "@/components/EditorDieta";
 import { clienteServidor } from "@/lib/supabase/servidor";
 import { alergenosDeIngredientes, alergiasDePersona } from "@/app/alergenos/consultas";
 import type { DietaCompleta } from "@/lib/dominio/tipos";
+import { aNumeroOpcional } from "@/lib/dominio/mapeo";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
     .select(
       `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
        estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en,
-       personas ( id, nombre ),
+       personas ( id, nombre, peso_kg ),
        comidas ( id, dieta_id, nombre, orden,
          componentes ( id, comida_id, ingrediente_id, gramos, orden, bloqueado,
                        prioridad, min_g, max_g, paso_g,
@@ -55,7 +56,9 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
         )
     : { data: [] };
 
-  const persona = (data as unknown as { personas: { id: string; nombre: string } | null }).personas;
+  const persona = (data as unknown as {
+    personas: { id: string; nombre: string; peso_kg: unknown } | null;
+  }).personas;
 
   // Cuántas versiones hay en la familia, para poder avisar al borrar.
   const { data: linaje } = await supabase.rpc("linaje_dieta", { p_dieta_id: id });
@@ -94,6 +97,7 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
         alergias={alergias}
         alergenos={alergenos}
         persona={persona?.nombre ?? null}
+        pesoKg={aNumeroOpcional(persona?.peso_kg, "peso_kg")}
       />
     </>
   );

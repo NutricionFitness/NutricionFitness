@@ -227,6 +227,72 @@ export function mereceDirigido(
   return distanciaAlObjetivo(macrosDieta, energiaDieta, objetivoPct) >= margen;
 }
 
+/** Hacia dónde se quiere mover un macro al cambiar un alimento por otro. */
+export interface Direccion {
+  macro: Macro;
+  /** «más» sube el porcentaje de ese macro; «menos» lo baja. */
+  sentido: "mas" | "menos";
+}
+
+type Macro = (typeof MACROS)[number];
+
+/** Cuántos puntos tiene que moverse el macro para que cuente como un cambio. */
+const MOVIMIENTO_MINIMO = 5;
+
+/**
+ * Sustitutos que mueven **un** macro en una dirección, de más parecido a menos.
+ *
+ * Es la pregunta del comparador suelto: «como esto, pero con más proteína». No
+ * hay dieta ni reparto pedido contra los que medir, así que no sirve
+ * `rankearHaciaObjetivo`.
+ *
+ * ## Por qué NO se ordena por cuánta proteína
+ *
+ * Es lo primero que se escribió y estaba mal, y se vio ejecutándolo contra el
+ * catálogo real: a «arroz con más proteína» contestaba **318 g de bacalao
+ * salado**, que efectivamente es lo que más proteína tiene de todo. Es el mismo
+ * vicio de los 437 g de berberechos del plan de dieta: correcto y ridículo.
+ *
+ * La frase lleva dos partes —«**como esto**, pero con más proteína»— y la
+ * primera pesa igual que la segunda. Así que se filtra por la dirección y se
+ * ordena por **parecido**: entre los que suben la proteína de verdad, primero
+ * el que menos cambia todo lo demás. A «arroz con más proteína» eso contesta
+ * quinoa y legumbres, que es la respuesta de manual.
+ *
+ * «De verdad» es `MOVIMIENTO_MINIMO` puntos porcentuales de la energía del
+ * alimento: sin ese mínimo, lo más parecido con más proteína sería otro arroz
+ * con un 1% más, y eso no es una respuesta, es una errata.
+ */
+export function rankearPorMacro(
+  actual: Candidato,
+  gramos: number,
+  candidatos: Candidato[],
+  direccion: Direccion,
+  opciones: OpcionesSustitucion = {},
+): Sustitucion[] {
+  if (!(gramos > 0) || !(actual.kcal100 > 0)) return [];
+
+  const pctDe = (c: Candidato) =>
+    c.kcal100 > 0 ? (100 * FACTOR[direccion.macro] * c[direccion.macro]) / c.kcal100 : 0;
+  const partida = pctDe(actual);
+  const signo = direccion.sentido === "mas" ? 1 : -1;
+
+  const out: Sustitucion[] = [];
+  for (const c of candidatos) {
+    const s = evaluar(actual, gramos, c, opciones);
+    if (!s) continue;
+    const movimiento = signo * (pctDe(c) - partida);
+    if (movimiento < MOVIMIENTO_MINIMO) continue;
+    out.push({ ...s, mejora: Math.round(movimiento * 100) / 100 });
+  }
+
+  // Por parecido, no por cuánto mueve el macro. Ver el comentario de arriba.
+  out.sort(
+    (a, b) => a.distancia - b.distancia || a.candidato.nombre.localeCompare(b.candidato.nombre),
+  );
+  return out.slice(0, opciones.limite ?? POR_DEFECTO.limite);
+}
+
 /**
  * Sustituciones que más acercan al reparto de macros pedido.
  *

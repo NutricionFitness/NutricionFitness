@@ -39,7 +39,12 @@ export async function crearDieta(datos: FormData) {
 
 export async function actualizarPersona(
   id: string,
-  cambios: Partial<{ nombre: string; notas: string | null; activa: boolean }>,
+  cambios: Partial<{
+    nombre: string;
+    notas: string | null;
+    activa: boolean;
+    peso_kg: number | null;
+  }>,
 ) {
   const supabase = await clienteServidor();
   const { error } = await supabase.from("personas").update(cambios).eq("id", id);

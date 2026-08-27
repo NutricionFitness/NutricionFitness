@@ -8,6 +8,7 @@ import {
   rankearSustitutos,
   type Candidato,
   type Macros,
+  rankearPorMacro,
 } from "./sustituir";
 
 const ing = (
@@ -340,3 +341,87 @@ describe("cuándo tiene sentido el modo dirigido", () => {
     expect(mereceDirigido(dieta, energia, { prot: 35, hc: 40, grasa: 25 })).toBe(true);
   });
 });
+
+describe("ordenar por dirección: «como esto pero con más proteína»", () => {
+  // Es la pregunta del comparador suelto, donde no hay dieta ni reparto pedido
+  // contra los que medir: solo un alimento y el catálogo.
+  const ARROZ_ = { id: 900, nombre: "Arroz", grupo: "Cereales y derivados", estado: "crudo",
+    prot: 7, hc: 78, grasa: 0.6, kcal100: 4 * 7 + 4 * 78 + 9 * 0.6 };
+  const CAT = [
+    { id: 901, nombre: "Lentejas", grupo: "Legumbres", estado: "crudo",
+      prot: 24, hc: 54, grasa: 1.8, kcal100: 4 * 24 + 4 * 54 + 9 * 1.8 },
+    { id: 902, nombre: "Pasta", grupo: "Cereales y derivados", estado: "crudo",
+      prot: 12, hc: 74, grasa: 1.5, kcal100: 4 * 12 + 4 * 74 + 9 * 1.5 },
+    { id: 903, nombre: "Tapioca", grupo: "Cereales y derivados", estado: "crudo",
+      prot: 0.2, hc: 86, grasa: 0.1, kcal100: 4 * 0.2 + 4 * 86 + 9 * 0.1 },
+  ];
+
+  it("primero el más PARECIDO de los que van en esa dirección", () => {
+    // La frase es «**como esto**, pero con más proteína», y la primera mitad
+    // pesa igual que la segunda. La pasta sube menos la proteína que las
+    // lentejas y aun así va primera, porque sigue siendo un cereal.
+    //
+    // Esto no es un capricho: ordenando por cuánta proteína, contra el
+    // catálogo real la respuesta a «arroz con más proteína» era 318 g de
+    // bacalao salado.
+    const r = rankearPorMacro(ARROZ_, 100, CAT, { macro: "prot", sentido: "mas" });
+    expect(r.map((s) => s.candidato.nombre)).toEqual(["Pasta", "Lentejas"]);
+    expect(r[0].mejora!).toBeLessThan(r[1].mejora!);
+    expect(r[0].distancia).toBeLessThan(r[1].distancia);
+  });
+
+  it("pero el movimiento tiene que ser de verdad", () => {
+    // Sin mínimo, «lo más parecido con algo más de proteína» sería otro arroz
+    // con un 1% más, y eso no es una respuesta: es una errata.
+    const CASI_IGUAL = {
+      id: 910, nombre: "Arroz casi igual", grupo: "Cereales y derivados", estado: "crudo",
+      prot: 7.4, hc: 78, grasa: 0.6, kcal100: 4 * 7.4 + 4 * 78 + 9 * 0.6,
+    };
+    const r = rankearPorMacro(ARROZ_, 100, [...CAT, CASI_IGUAL], {
+      macro: "prot", sentido: "mas",
+    });
+    expect(r.map((s) => s.candidato.nombre)).not.toContain("Arroz casi igual");
+    for (const s of r) expect(s.mejora!).toBeGreaterThanOrEqual(5);
+  });
+
+  it("no propone los que van en la dirección contraria", () => {
+    // La tapioca tiene menos proteína que el arroz: no es una respuesta peor a
+    // «más proteína», es una respuesta a otra pregunta.
+    const r = rankearPorMacro(ARROZ_, 100, CAT, { macro: "prot", sentido: "mas" });
+    expect(r.map((s) => s.candidato.nombre)).not.toContain("Tapioca");
+  });
+
+  it("al revés, la dirección contraria", () => {
+    const r = rankearPorMacro(ARROZ_, 100, CAT, { macro: "prot", sentido: "menos" });
+    expect(r.map((s) => s.candidato.nombre)).toEqual(["Tapioca"]);
+  });
+
+  it("mide en puntos del reparto, no en gramos", () => {
+    // Las lentejas suben la proteína del 7% al 24% del peso, pero lo que se
+    // anuncia es el cambio del REPARTO del alimento, que es lo que dice qué
+    // clase de alimento es.
+    const r = rankearPorMacro(ARROZ_, 100, CAT, { macro: "prot", sentido: "mas" });
+    const pct = (c: (typeof CAT)[number]) => (100 * 4 * c.prot) / c.kcal100;
+    const base = (100 * 4 * ARROZ_.prot) / ARROZ_.kcal100;
+    for (const s of r) {
+      const c = CAT.find((x) => x.id === s.candidato.id)!;
+      expect(s.mejora!).toBeCloseTo(pct(c) - base, 1);
+    }
+  });
+
+  it("sigue siendo isoenergético y respeta los filtros de siempre", () => {
+    const r = rankearPorMacro(ARROZ_, 100, CAT, { macro: "prot", sentido: "mas" });
+    for (const s of r) {
+      const kcalAntes = (ARROZ_.kcal100 * 100) / 100;
+      const kcalDespues = (s.candidato.kcal100 * s.gramos) / 100;
+      expect(kcalDespues).toBeCloseTo(kcalAntes, 0);
+      expect(s.gramos).toBeGreaterThanOrEqual(25);
+      expect(s.gramos).toBeLessThanOrEqual(400);
+    }
+  });
+
+  it("sin candidatos, o sin gramos, no revienta", () => {
+    expect(rankearPorMacro(ARROZ_, 100, [], { macro: "prot", sentido: "mas" })).toEqual([]);
+    expect(rankearPorMacro(ARROZ_, 0, CAT, { macro: "prot", sentido: "mas" })).toEqual([]);
+  });
+})

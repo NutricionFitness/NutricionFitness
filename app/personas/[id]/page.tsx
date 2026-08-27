@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import AccionesDieta from "@/components/AccionesDieta";
 import AlergiasPersona from "@/components/AlergiasPersona";
 import CabeceraPersona from "@/components/CabeceraPersona";
+import { aNumeroOpcional } from "@/lib/dominio/mapeo";
 import { clienteServidor } from "@/lib/supabase/servidor";
 import {
   alergiasDePersona,
@@ -19,7 +20,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
   const supabase = await clienteServidor();
 
   const { data: persona } = await supabase
-    .from("personas").select("id, nombre, notas").eq("id", id).single();
+    .from("personas").select("id, nombre, notas, peso_kg").eq("id", id).single();
   if (!persona) notFound();
 
   const { data: dietas } = await supabase
@@ -52,6 +53,8 @@ export default async function Persona({ params }: { params: Promise<{ id: string
           id: persona.id as string,
           nombre: persona.nombre as string,
           notas: (persona as { notas?: string | null }).notas ?? null,
+          // `numeric` de PostgreSQL llega como cadena; sin esto, «70» sería "70".
+          peso_kg: aNumeroOpcional((persona as { peso_kg?: unknown }).peso_kg, "peso_kg"),
         }}
         nDietas={dietas?.length ?? 0}
       />

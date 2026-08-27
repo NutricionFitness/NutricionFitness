@@ -11,7 +11,13 @@ import { NextResponse, type NextRequest } from "next/server";
 // tiene que funcionar sin sesión, que es justo lo que la hace útil. Lo que se
 // puede hacer desde ahí lo limitan las tres funciones de la migración 0009, no
 // esta lista: la página en sí no lee ni escribe nada por su cuenta.
-const PUBLICAS = ["/login", "/auth", "/escanear"];
+//
+// `/comparador` es lo mismo con la 0011: una página de cálculo abierta a
+// cualquiera, que no toca ninguna tabla y solo llama a dos funciones que
+// devuelven catálogo público y nada más. Que una ruta esté en esta lista NUNCA
+// es lo que la hace segura; lo que la hace segura es que no pueda pedir nada
+// que no deba.
+const PUBLICAS = ["/login", "/auth", "/escanear", "/comparador"];
 
 export async function middleware(peticion: NextRequest) {
   let respuesta = NextResponse.next({ request: peticion });

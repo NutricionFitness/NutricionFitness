@@ -39,7 +39,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       <body>
         <header className="barra">
           <div>
-            <Link href="/personas" className="marca">
+            <Link href={usuario ? "/personas" : "/comparador"} className="marca">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <rect
                   x="1.6"
@@ -66,6 +66,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
             </Link>
 
             <nav>
+              {/* El comparador es público: sale con sesión y sin ella, porque
+                  para eso se ha hecho. */}
+              <Link href="/comparador">Comparador</Link>
               {usuario && (
                 <>
                   <Link href="/personas">Personas</Link>
