@@ -18,12 +18,21 @@ import AnadirComida from "./AnadirComida";
 import BuscadorIngrediente from "./BuscadorIngrediente";
 import PanelSustitucion from "./PanelSustitucion";
 import PlanDeCambios from "./PlanDeCambios";
+import OpcionesComida from "./OpcionesComida";
 import DietaVacia from "./DietaVacia";
 import { IconoAyuda } from "./Iconos";
 import type { Alergeno, AlergenosIngrediente } from "@/app/alergenos/consultas";
 import type { DatosPlan } from "@/app/dietas/[id]/tipos";
-import { aComponente, aDieta, contarComponentes, gramosAGuardar } from "@/lib/dominio/mapeo";
+import {
+  aComponente,
+  aDieta,
+  componentesActivos,
+  contarComponentes,
+  gramosAGuardar,
+  opcionActiva,
+} from "@/lib/dominio/mapeo";
 import { totalesDe } from "@/lib/dominio/totales";
+import { objetivoParaCuadrar } from "@/lib/dominio/opciones";
 import TotalesDe from "./TotalesDieta";
 import { mereceDirigido } from "@/lib/dominio/sustituir";
 import {
@@ -106,6 +115,7 @@ function EditorCompleto({
   const [holgura, setHolgura] = useState(40);
   const [sustituyendo, setSustituyendo] = useState<string | null>(null);
   const [datosPlan, setDatosPlan] = useState<DatosPlan | null>(null);
+  const [falloGuardar, setFalloGuardar] = useState<string | null>(null);
   const [verLimites, setVerLimites] = useState(false);
   const [ayudaPrioridad, setAyudaPrioridad] = useState<string | null>(null);
 
@@ -167,6 +177,10 @@ function EditorCompleto({
     [dieta, objetivo, opciones],
   );
 
+  // --- índice de los cambios por posición, para pintarlos junto a cada fila ---
+  // Arriba y no abajo: lo leen `cuadrarLasDemas` y `guardar`, que están antes.
+  const porId = new Map(idsComponentes.map((id, i) => [id, resultado.cambios[i]]));
+
   const rango = resultado.rangoAlcanzable;
   // ¿Hay propuesta? Se mira lo que se ha PEDIDO, no lo que el motor devuelve.
   //
@@ -202,11 +216,95 @@ function EditorCompleto({
     setPedido({ prot: "", hc: "", grasa: "" });
   }
 
+  /**
+   * Los gramos que le quedan a cada opción NO activa después del ajuste.
+   *
+   * El motor solo ha movido la combinación activa, porque es la que forma la
+   * dieta. Pero las opciones de una comida tienen que seguir valiendo lo mismo
+   * entre ellas, así que cada una que no esté activa se cuadra contra lo que le
+   * haya quedado a **su comida**: se corre el mismo motor sobre esa opción sola,
+   * con las kcal y el reparto nuevos de la comida como objetivo.
+   *
+   * Devuelve también las que no se han podido cuadrar, para poder decirlo en
+   * vez de guardar una dieta cuyas alternativas ya no valen lo mismo.
+   */
+  function cuadrarLasDemas(): {
+    gramos: Array<{ id: string; gramos: number }>;
+    rebeldes: string[];
+  } {
+    const modeloEnergia = filas.modelo_energia ?? "atwater";
+    const gramos: Array<{ id: string; gramos: number }> = [];
+    const rebeldes: string[] = [];
+
+    for (const comida of [...(filas.comidas ?? [])]) {
+      const suyas = comida.opciones ?? [];
+      if (suyas.length < 2) continue;
+
+      const activa = opcionActiva(comida);
+
+      // Cómo queda la comida después del ajuste: es el objetivo de las demás.
+      const activos = componentesActivos(comida).map((c) => {
+        const cambio = porId.get(c.id);
+        return {
+          ...aComponente(c, comida.nombre),
+          gramos: cambio ? cambio.gramosDespues : Number(c.gramos),
+        };
+      });
+      if (!activos.length) continue;
+      const objetivoComida = objetivoParaCuadrar(totalesDe(activos, modeloEnergia));
+
+      for (const o of suyas) {
+        if (o.id === activa) continue;
+        const suyos = [...(comida.componentes ?? [])]
+          .filter((c) => c.opcion_id === o.id)
+          .sort((a, b) => a.orden - b.orden || a.id.localeCompare(b.id));
+        if (!suyos.length) continue;
+
+        const res = ajustar(
+          {
+            componentes: suyos.map((c) => aComponente(c, comida.nombre)),
+            modeloEnergia,
+          },
+          objetivoComida.kcal,
+          {
+            modo: "prioridades",
+            // Ancho a propósito: aquí se cuadra una opción entera contra otras
+            // kcal, no se retoca. Con el margen de la pantalla, una opción se
+            // quedaría sin sitio para seguir a su comida.
+            holguraRel: 2,
+            redondear: true,
+            fuerzaMacros: FUERZA_MACROS,
+            macrosObjetivo: objetivoComida.macrosObjetivo,
+          },
+        );
+
+        if (!res.factible) {
+          rebeldes.push(`${comida.nombre} · ${o.nombre}`);
+          continue;
+        }
+        res.cambios.forEach((c, i) => gramos.push({ id: suyos[i].id, gramos: c.gramosDespues }));
+      }
+    }
+
+    return { gramos, rebeldes };
+  }
+
   function guardar() {
+    const otras = cuadrarLasDemas();
+    if (otras.rebeldes.length) {
+      setFalloGuardar(
+        `No se han podido cuadrar estas opciones con lo que les queda a su comida: ` +
+          `${otras.rebeldes.join("; ")}. Ajústalas a mano —o quítales algún tope— y ` +
+          "vuelve a guardar; si se guardara así, las alternativas dejarían de valer lo mismo.",
+      );
+      return;
+    }
+    setFalloGuardar(null);
+
     iniciar(async () => {
       const nueva = await aplicarAjuste({
         dietaId: filas.id,
-        gramos: gramosAGuardar(resultado, idsComponentes),
+        gramos: [...gramosAGuardar(resultado, idsComponentes), ...otras.gramos],
         nombre: null,
         kcalObjetivo: objetivo,
         kcalOrigen: e0,
@@ -223,8 +321,6 @@ function EditorCompleto({
     });
   }
 
-  // --- índice de los cambios por posición, para pintarlos junto a cada fila ---
-  const porId = new Map(idsComponentes.map((id, i) => [id, resultado.cambios[i]]));
   const comidas = [...(filas.comidas ?? [])].sort((a, b) => a.orden - b.orden);
 
   // --- de dónde viene cada tope -------------------------------------------
@@ -483,7 +579,38 @@ function EditorCompleto({
 
       {/* ------------------------------------------------- las comidas */}
       {comidas.map((comida) => {
-        const componentes = [...(comida.componentes ?? [])].sort((a, b) => a.orden - b.orden);
+        // Solo los de la opción que se está viendo. Los de las demás siguen
+        // cargados —hacen falta para las pestañas y para comprobar que cuadran—
+        // pero no se pintan ni entran en el motor.
+        const componentes = componentesActivos(comida);
+        const activaId = opcionActiva(comida);
+        const opciones = comida.opciones ?? [];
+
+        // Los componentes de cada opción, en formato del motor, para que las
+        // pestañas puedan comparar y cuadrar sin volver al servidor.
+        const porOpcion: Record<string, ReturnType<typeof aComponente>[]> = {};
+        const idsPorOpcion: Record<string, string[]> = {};
+        for (const o of opciones) {
+          const suyos = [...(comida.componentes ?? [])]
+            .filter((c) => c.opcion_id === o.id)
+            .sort((a, b) => a.orden - b.orden || a.id.localeCompare(b.id));
+          porOpcion[o.id] = suyos.map((c) => aComponente(c, comida.nombre));
+          idsPorOpcion[o.id] = suyos.map((c) => c.id);
+        }
+
+        const pestanas =
+          opciones.length > 0 ? (
+            <OpcionesComida
+              comidaId={comida.id}
+              dietaId={filas.id}
+              opciones={opciones}
+              activaId={activaId}
+              modeloEnergia={filas.modelo_energia ?? "atwater"}
+              porOpcion={porOpcion}
+              idsPorOpcion={idsPorOpcion}
+              onHecho={() => router.refresh()}
+            />
+          ) : null;
 
         if (!componentes.length)
           return (
@@ -501,15 +628,18 @@ function EditorCompleto({
                   quitar
                 </button>
               </header>
+              {pestanas}
               <div style={{ padding: "10px 16px 14px" }}>
                 <p className="tenue" style={{ margin: 0, fontSize: 13.5 }}>
-                  Sin componentes.
+                  {opciones.length > 1
+                    ? "Esta opción no tiene ningún alimento todavía."
+                    : "Sin componentes."}
                 </p>
                 <BuscadorIngrediente
                   alergias={idsAlergia}
                   onElegir={(ingredienteId, gramos) =>
                     iniciar(() =>
-                      anadirComponente(comida.id, ingredienteId, gramos, filas.id).then(() =>
+                      anadirComponente(comida.id, ingredienteId, gramos, filas.id, activaId).then(() =>
                         router.refresh(),
                       ),
                     )
@@ -552,6 +682,8 @@ function EditorCompleto({
                 {hayCambios && ` → ${Math.round(kcalPropuesta)}`}
               </span>
             </header>
+
+            {pestanas}
 
             <div className="tabla">
               <table>
@@ -930,7 +1062,7 @@ function EditorCompleto({
                 alergias={idsAlergia}
                 onElegir={(ingredienteId, gramos) =>
                   iniciar(() =>
-                    anadirComponente(comida.id, ingredienteId, gramos, filas.id).then(() =>
+                    anadirComponente(comida.id, ingredienteId, gramos, filas.id, activaId).then(() =>
                       router.refresh(),
                     ),
                   )
@@ -1223,6 +1355,7 @@ function EditorCompleto({
         </div>
 
         <footer>
+          {falloGuardar && <p className="aviso">{falloGuardar}</p>}
           {resultado.factible && (
             <button className="principal" onClick={guardar} disabled={!hayCambios || pendiente}>
               {pendiente ? "Guardando…" : "Guardar como nueva versión"}

@@ -300,3 +300,25 @@
     break-inside: avoid;
   }
 }
+
+/* --- fase 20: las opciones de una comida, una detrás de otra ---------------
+   La segunda y siguientes no repiten el nombre de la comida: llevan un «o
+   bien» y el nombre de la opción. Van pegadas a la de arriba y sin salto de
+   página entre ellas, porque son la misma comida y se leen juntas. */
+.hoja .comida.opcion-alterna {
+  margin-top: 4mm;
+  padding-left: 4mm;
+  border-left: 1.2pt solid #d5d8d2;
+  break-before: avoid;
+  page-break-before: avoid;
+}
+.hoja .comida h2 .o {
+  font-weight: 400;
+  font-style: italic;
+  color: #6b7169;
+}
+.hoja .comida h2 .opcion-nombre {
+  margin-left: 6px;
+  font-weight: 600;
+  font-size: 0.92em;
+}

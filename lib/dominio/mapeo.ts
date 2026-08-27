@@ -83,7 +83,38 @@ export function aComponente(
  * antes, porque el motor sí exige al menos un componente.
  */
 export function contarComponentes(d: Pick<DietaCompleta, "comidas">): number {
-  return (d.comidas ?? []).reduce((n, m) => n + (m.componentes?.length ?? 0), 0);
+  // Los de la opción ACTIVA, que son los que va a ver el motor. Contando todos,
+  // una dieta cuya opción activa está vacía pero que tiene otra con comida
+  // pasaría el filtro y `aDieta` reventaría por no encontrar componentes.
+  return (d.comidas ?? []).reduce((n, m) => n + componentesActivos(m).length, 0);
+}
+
+/**
+ * Qué opción de una comida es la que se está viendo.
+ *
+ * La que diga `opcion_activa_id`; si esa se borró —o la migración 0012 aún no
+ * está aplicada y no hay ninguna—, la primera por orden. Nunca devuelve nada
+ * si la comida no tiene opciones: entonces es una dieta de antes de la 0012 y
+ * los componentes cuelgan directamente de la comida.
+ */
+export function opcionActiva(m: DietaCompleta["comidas"][number]): string | null {
+  const opciones = [...(m.opciones ?? [])].sort(
+    (a, b) => a.orden - b.orden || a.id.localeCompare(b.id),
+  );
+  if (!opciones.length) return null;
+  const activa = opciones.find((o) => o.id === m.opcion_activa_id);
+  return (activa ?? opciones[0]).id;
+}
+
+/** Los componentes de la opción que se está viendo, en orden. */
+export function componentesActivos(
+  m: DietaCompleta["comidas"][number],
+): DietaCompleta["comidas"][number]["componentes"] {
+  const activa = opcionActiva(m);
+  const todos = m.componentes ?? [];
+  // Sin opciones —dieta anterior a la 0012— van todos: es lo que había.
+  const suyos = activa === null ? todos : todos.filter((c) => c.opcion_id === activa);
+  return [...suyos].sort((a, b) => a.orden - b.orden || a.id.localeCompare(b.id));
 }
 
 /**
@@ -98,10 +129,9 @@ export function aDieta(d: DietaCompleta): { dieta: Dieta; idsComponentes: string
   const componentes: Componente[] = [];
   const idsComponentes: string[] = [];
   for (const m of comidas) {
-    const suyos = [...(m.componentes ?? [])].sort(
-      (a, b) => a.orden - b.orden || a.id.localeCompare(b.id),
-    );
-    for (const c of suyos) {
+    // SOLO la opción activa. Meter todas sumaría dos desayunos en la misma
+    // dieta, y el total dejaría de ser el total de nada.
+    for (const c of componentesActivos(m)) {
       componentes.push(aComponente(c, m.nombre));
       idsComponentes.push(c.id);
     }

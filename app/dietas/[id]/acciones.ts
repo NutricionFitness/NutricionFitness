@@ -32,12 +32,40 @@ export async function actualizarComponente(
   revalidatePath(`/dietas/${dietaId}`);
 }
 
+/**
+ * Añade un ingrediente a una comida, dentro de una opción concreta.
+ *
+ * `opcionId` es obligatoria desde la migración 0012: un componente cuelga de
+ * una opción, no de la comida. Si llega vacía —una pantalla vieja, una dieta a
+ * la que le falte la migración— se usa la opción activa de esa comida en vez de
+ * fallar con un error de la base que no dice nada.
+ */
 export async function anadirComponente(
-  comidaId: string, ingredienteId: number, gramos: number, dietaId: string,
+  comidaId: string,
+  ingredienteId: number,
+  gramos: number,
+  dietaId: string,
+  opcionId?: string | null,
 ) {
   const supabase = await clienteServidor();
+
+  let opcion = opcionId ?? null;
+  if (!opcion) {
+    const { data: comida } = await supabase
+      .from("comidas")
+      .select("opcion_activa_id, opciones ( id, orden )")
+      .eq("id", comidaId)
+      .single();
+    const opciones = ((comida as { opciones?: Array<{ id: string; orden: number }> } | null)
+      ?.opciones ?? []).sort((a, b) => a.orden - b.orden);
+    opcion =
+      (comida as { opcion_activa_id?: string | null } | null)?.opcion_activa_id ??
+      opciones[0]?.id ??
+      null;
+  }
+
   const { error } = await supabase.from("componentes").insert({
-    comida_id: comidaId, ingrediente_id: ingredienteId, gramos,
+    comida_id: comidaId, opcion_id: opcion, ingrediente_id: ingredienteId, gramos,
   });
   if (error) throw new Error(error.message);
   revalidatePath(`/dietas/${dietaId}`);
@@ -463,4 +491,152 @@ export async function moverComponente(
     supabase.from("componentes").update({ orden: ordenes[i] }).eq("id", hermanos[j].id),
   ]);
   revalidatePath(`/dietas/${dietaId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Opciones dentro de una comida
+//
+// El cambio de opción activa se guarda: no es un estado de la pantalla, es
+// parte de la dieta. Al abrirla mañana está la que dejaste puesta, y eso es lo
+// que se imprime y lo que se ajusta.
+// ---------------------------------------------------------------------------
+
+/** Cambia la opción que se está viendo de una comida. */
+export async function activarOpcion(comidaId: string, opcionId: string, dietaId: string) {
+  const supabase = await clienteServidor();
+  const { error } = await supabase
+    .from("comidas")
+    .update({ opcion_activa_id: opcionId })
+    .eq("id", comidaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dietas/${dietaId}`);
+}
+
+/**
+ * Crea una opción nueva y la deja activa.
+ *
+ * `copiarDe` la crea con los mismos alimentos que otra: es lo que se quiere
+ * casi siempre, porque una opción nueva se hace cambiando una cosa de la que ya
+ * hay, no empezando de cero. Y de paso nace equivalente, que es la regla.
+ */
+export async function crearOpcion(datos: {
+  comidaId: string;
+  nombre: string;
+  copiarDe: string | null;
+  dietaId: string;
+}): Promise<{ id: string | null; error: string | null }> {
+  const supabase = await clienteServidor();
+
+  const { data: hermanas } = await supabase
+    .from("opciones")
+    .select("orden")
+    .eq("comida_id", datos.comidaId)
+    .order("orden", { ascending: false })
+    .limit(1);
+  const orden = ((hermanas?.[0]?.orden as number | undefined) ?? -1) + 1;
+
+  const { data: creada, error } = await supabase
+    .from("opciones")
+    .insert({ comida_id: datos.comidaId, nombre: datos.nombre.trim(), orden })
+    .select("id")
+    .single();
+
+  if (error || !creada) {
+    return {
+      id: null,
+      error:
+        error?.code === "23505"
+          ? "Ya hay una opción con ese nombre en esta comida."
+          : (error?.message ?? "No se ha podido crear la opción."),
+    };
+  }
+  const nuevaId = creada.id as string;
+
+  if (datos.copiarDe) {
+    const { data: origen } = await supabase
+      .from("componentes")
+      .select("ingrediente_id, gramos, orden, bloqueado, prioridad, min_g, max_g, paso_g")
+      .eq("opcion_id", datos.copiarDe);
+
+    if (origen?.length) {
+      const { error: errorCopia } = await supabase.from("componentes").insert(
+        origen.map((c) => ({ ...c, comida_id: datos.comidaId, opcion_id: nuevaId })),
+      );
+      if (errorCopia) return { id: nuevaId, error: errorCopia.message };
+    }
+  }
+
+  await supabase
+    .from("comidas")
+    .update({ opcion_activa_id: nuevaId })
+    .eq("id", datos.comidaId);
+
+  revalidatePath(`/dietas/${datos.dietaId}`);
+  return { id: nuevaId, error: null };
+}
+
+export async function renombrarOpcion(
+  opcionId: string,
+  nombre: string,
+  dietaId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await clienteServidor();
+  const { error } = await supabase
+    .from("opciones")
+    .update({ nombre: nombre.trim() })
+    .eq("id", opcionId);
+  if (error)
+    return {
+      error:
+        error.code === "23505"
+          ? "Ya hay una opción con ese nombre en esta comida."
+          : error.message,
+    };
+  revalidatePath(`/dietas/${dietaId}`);
+  return { error: null };
+}
+
+/**
+ * Borra una opción con todos sus alimentos.
+ *
+ * La última no se puede: lo impide un disparador de la migración 0012, porque
+ * una comida sin opciones no tiene dónde poner un ingrediente. Aquí se traduce
+ * ese error a algo que se pueda leer.
+ */
+export async function borrarOpcion(
+  opcionId: string,
+  dietaId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("opciones").delete().eq("id", opcionId);
+  if (error)
+    return {
+      error: error.message.includes("sin opciones")
+        ? "Es la única opción de esta comida: para quitarla, quita la comida entera."
+        : error.message,
+    };
+  revalidatePath(`/dietas/${dietaId}`);
+  return { error: null };
+}
+
+/**
+ * Guarda los gramos que ha calculado el motor para cuadrar una opción.
+ *
+ * El cálculo lo hace el navegador con `ajustar`, igual que el ajuste de la
+ * dieta entera: aquí solo se escribe. Así no hay dos motores.
+ */
+export async function guardarGramos(
+  gramos: Array<{ id: string; gramos: number }>,
+  dietaId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await clienteServidor();
+  for (const g of gramos) {
+    const { error } = await supabase
+      .from("componentes")
+      .update({ gramos: g.gramos })
+      .eq("id", g.id);
+    if (error) return { error: error.message };
+  }
+  revalidatePath(`/dietas/${dietaId}`);
+  return { error: null };
 }

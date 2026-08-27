@@ -167,19 +167,47 @@ export default function HojaDieta({
             </section>
 
             {/* las comidas */}
-            {comidas.map((comida) => {
-              const componentes = [...(comida.componentes ?? [])].sort(
-                (a, b) => a.orden - b.orden,
+            {comidas.flatMap((comida) => {
+              /*
+               * Con opciones, la hoja saca **todas**, una detrás de otra.
+               *
+               * Es lo que las hace útiles para quien recibe el papel: valen lo
+               * mismo —esa es la regla— así que el cliente elige la que le
+               * apetezca ese día. Sacar solo la activa dejaría la alternativa
+               * dentro de la app, donde el cliente no entra.
+               *
+               * Una dieta anterior a la migración 0012 no tiene opciones y
+               * entra por el mismo sitio con una sola «opción» sin nombre.
+               */
+              const suyas = [...(comida.opciones ?? [])].sort(
+                (a, b) => a.orden - b.orden || a.id.localeCompare(b.id),
               );
+              const bloques = suyas.length
+                ? suyas.map((o) => ({
+                    clave: o.id,
+                    etiqueta: suyas.length > 1 ? o.nombre : null,
+                    lista: [...(comida.componentes ?? [])]
+                      .filter((c) => c.opcion_id === o.id)
+                      .sort((a, b) => a.orden - b.orden),
+                  }))
+                : [{
+                    clave: comida.id,
+                    etiqueta: null,
+                    lista: [...(comida.componentes ?? [])].sort((a, b) => a.orden - b.orden),
+                  }];
+
+              return bloques.map(({ clave, etiqueta, lista }, i) => {
+              const componentes = lista;
               if (!componentes.length) return null;
               const kcalComida = componentes.reduce(
                 (s, c) => s + (Number(c.gramos) * Number(c.ingredientes.kcal_100)) / 100,
                 0,
               );
               return (
-                <section className="comida" key={comida.id}>
+                <section className={i === 0 ? "comida" : "comida opcion-alterna"} key={clave}>
                   <h2>
-                    {comida.nombre}
+                    {i === 0 ? comida.nombre : <span className="o">o bien</span>}
+                    {etiqueta && <span className="opcion-nombre">{etiqueta}</span>}
                     <span className="comida-kcal">{n0(kcalComida)} kcal</span>
                   </h2>
                   <table>
@@ -220,6 +248,7 @@ export default function HojaDieta({
                   </table>
                 </section>
               );
+              });
             })}
           </>
         )}

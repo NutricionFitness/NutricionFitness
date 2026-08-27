@@ -2791,3 +2791,90 @@ button:has(> svg + span) {
     gap: 10px 20px;
   }
 }
+
+/* ===========================================================================
+   Fase 20 — opciones dentro de una comida
+   ===========================================================================
+   Las pestañas van DENTRO de la tarjeta de la comida y pegadas a su cabecera,
+   no encima: lo que cambian es el contenido de esa comida, y separarlas la
+   convertiría en un filtro de la página.                                     */
+
+.opciones-comida {
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--linea);
+}
+.opciones-comida .pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.opciones-comida .pestana {
+  padding: 5px 11px;
+  font-size: 13px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--linea);
+  white-space: nowrap;
+}
+.opciones-comida .pestana.activa {
+  background: var(--acento-suave);
+  border-color: transparent;
+  color: var(--acento);
+  font-weight: 600;
+}
+.opciones-comida .pestana.anadir {
+  border-style: dashed;
+  color: var(--suave);
+}
+.opciones-comida .pestana .chip.ref {
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.opciones-comida .quitar-opcion {
+  margin-left: auto;
+  font-size: 12.5px;
+}
+.opciones-comida .renombrar-opcion {
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.opciones-comida .renombrar-opcion input {
+  max-width: 260px;
+}
+.opciones-comida .aviso,
+.opciones-comida .cuadra {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+.opciones-comida .aviso-caja.no-cuadra {
+  margin: 10px 0;
+}
+.opciones-comida .aviso-caja.no-cuadra ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.opciones-comida .aviso-caja.no-cuadra p {
+  margin: 6px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.opciones-comida .aviso-caja.no-cuadra .boton-plan {
+  width: auto;
+  margin-top: 0;
+}
+.opciones-comida .cuadra {
+  padding-bottom: 8px;
+}
+
+@media (max-width: 520px) {
+  .opciones-comida {
+    padding: 8px 12px 0;
+  }
+  .opciones-comida .quitar-opcion {
+    margin-left: 0;
+  }
+}

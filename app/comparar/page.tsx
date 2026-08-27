@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 
 const CAMPOS = `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
   estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en,
-  comidas ( id, dieta_id, nombre, orden,
-    componentes ( id, comida_id, ingrediente_id, gramos, orden, bloqueado,
+  comidas ( id, dieta_id, nombre, orden, opcion_activa_id,
+    opciones ( id, comida_id, nombre, orden ),
+    componentes ( id, comida_id, opcion_id, ingrediente_id, gramos, orden, bloqueado,
                   prioridad, min_g, max_g, paso_g,
                   ingredientes ( id, nombre, kcal_100, prot_100, hc_100, grasa_100,
                                  fibra_100, alcohol_100, estado ) ) )`;

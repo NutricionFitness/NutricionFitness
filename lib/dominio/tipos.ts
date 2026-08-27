@@ -61,11 +61,26 @@ export interface FilaComida {
   dieta_id: string;
   nombre: string;
   orden: number;
+  /**
+   * Qué opción se está viendo. Puede llegar nula —si se borró la activa— y
+   * entonces manda la primera por orden.
+   */
+  opcion_activa_id?: string | null;
+}
+
+/** Una alternativa dentro de una comida. La de menor `orden` es la referencia. */
+export interface FilaOpcion {
+  id: string;
+  comida_id: string;
+  nombre: string;
+  orden: number;
 }
 
 export interface FilaComponente {
   id: string;
   comida_id: string;
+  /** De qué opción de esa comida es. Obligatoria desde la migración 0012. */
+  opcion_id?: string | null;
   ingrediente_id: number;
   gramos: number;
   orden: number;
@@ -76,11 +91,22 @@ export interface FilaComponente {
   paso_g: number;
 }
 
-/** Lo que devuelve la consulta que trae una dieta entera de una vez. */
+/** Un componente con su ingrediente, tal y como llega de la consulta. */
+export type ComponenteConIngrediente = FilaComponente & { ingredientes: FilaIngrediente };
+
+/**
+ * Lo que devuelve la consulta que trae una dieta entera de una vez.
+ *
+ * `componentes` trae los de **todas** las opciones, no solo los de la activa:
+ * la pantalla necesita poder pintar las pestañas y comprobar equivalencias sin
+ * volver al servidor, y el ajuste tiene que cuadrarlas todas. Quien se queda
+ * solo con la activa es `aDieta`, que es quien habla con el motor.
+ */
 export interface DietaCompleta extends FilaDieta {
   comidas: Array<
     FilaComida & {
-      componentes: Array<FilaComponente & { ingredientes: FilaIngrediente }>;
+      opciones?: FilaOpcion[];
+      componentes: ComponenteConIngrediente[];
     }
   >;
 }

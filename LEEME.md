@@ -134,7 +134,8 @@ supabase/
   migraciones/0009_escaneo_remoto.sql   escanear con la cámara de otro aparato
   migraciones/0010_peso_persona.sql     el peso, para leer los macros en g/kg
   migraciones/0011_catalogo_publico.sql  el comparador abierto, sin sesión
-  pruebas/                              andamio y 7 baterías contra PostgreSQL local
+  migraciones/0012_opciones_comida.sql   opciones dentro de una misma comida
+  pruebas/                              andamio y 8 baterías contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
 scripts/cargar-medidas.mjs
@@ -142,7 +143,7 @@ scripts/derivar-alergenos.mjs           deduce alérgenos de LanguaL y del nombr
 scripts/probar-codigo.ts                qué trae Open Food Facts de un código
 lib/
   motor/          el motor de la fase 3, sin tocar
-  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución (131 tests)
+  dominio/        conversión filas ↔ motor, comparador, medidas y sustitución (143 tests)
                   incluye plan-sustitucion.ts: qué cambiar en TODA la dieta
   openfoodfacts/  código de barras → ingrediente, con sus avisos             (51 tests)
   codigo-barras/  lector de EAN-13 y EAN-8, sin dependencias                 (17 tests)
@@ -166,6 +167,7 @@ components/
   TotalesDieta.tsx         lo que suma una comida, y lo que suma el día
   Comparador.tsx           el comparador público de alimentos
   CatalogoPublico.tsx      el interruptor de publicar tu catálogo
+  OpcionesComida.tsx       las pestañas de opciones de una comida
   DietaVacia.tsx           una dieta recién creada, antes del primer ingrediente
   BuscadorIngrediente.tsx
   FormularioContrasena.tsx

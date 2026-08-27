@@ -13,7 +13,7 @@
  */
 
 import { FACTORES } from "@/lib/motor";
-import { aNumero } from "./mapeo";
+import { aNumero, componentesActivos } from "./mapeo";
 import type { DietaCompleta, FilaComponente, FilaIngrediente } from "./tipos";
 
 export type EstadoLinea = "igual" | "cambia" | "anadido" | "quitado";
@@ -65,7 +65,10 @@ const kcalDe = (c: Comp) =>
 function totales(d: DietaCompleta): Totales {
   let kcal = 0, prot = 0, hc = 0, grasa = 0, fibra = 0;
   for (const m of d.comidas ?? []) {
-    for (const c of m.componentes ?? []) {
+    // Solo la opción activa, como `aDieta`. Sumando todas, una comida con dos
+    // opciones contaría dos desayunos y la comparación entre versiones diría
+    // que la dieta ha engordado el día que se añadió una alternativa.
+    for (const c of componentesActivos(m)) {
       const g = aNumero(c.gramos, "gramos") / 100;
       const i = c.ingredientes;
       kcal += g * aNumero(i.kcal_100, "kcal_100");
@@ -93,10 +96,7 @@ function porComida(d: DietaCompleta): Map<string, Comp[]> {
     (a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre),
   );
   for (const m of comidas) {
-    const lista = [...(m.componentes ?? [])].sort(
-      (a, b) => a.orden - b.orden || a.id.localeCompare(b.id),
-    );
-    fuera.set(m.nombre, (fuera.get(m.nombre) ?? []).concat(lista as Comp[]));
+    fuera.set(m.nombre, (fuera.get(m.nombre) ?? []).concat(componentesActivos(m) as Comp[]));
   }
   return fuera;
 }

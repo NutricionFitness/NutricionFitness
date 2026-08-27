@@ -26,9 +26,10 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
       `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
        estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en,
        personas ( id, nombre, peso_kg ),
-       comidas ( id, dieta_id, nombre, orden,
-         componentes ( id, comida_id, ingrediente_id, gramos, orden, bloqueado,
-                       prioridad, min_g, max_g, paso_g,
+       comidas ( id, dieta_id, nombre, orden, opcion_activa_id,
+         opciones ( id, comida_id, nombre, orden ),
+         componentes ( id, comida_id, opcion_id, ingrediente_id, gramos, orden,
+                       bloqueado, prioridad, min_g, max_g, paso_g,
                        ingredientes ( ${CAMPOS_INGREDIENTE} ) ) )`,
     )
     .eq("id", id)
