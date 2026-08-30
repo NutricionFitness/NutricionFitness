@@ -3017,3 +3017,183 @@ button:has(> svg + span) {
   padding: 12px 0 18px;
   margin-top: -2px;
 }
+
+/* ============================================== plantillas de opción ===== */
+/* Fase 23. Los dos diálogos comparten esqueleto con `.plan-cambios` y
+   `.transferir`: un `<dialog>` modal, que se pinta en la capa superior del
+   navegador y no lo puede recortar ningún `overflow`. */
+.plantillas[open],
+.guardar-plantilla[open] {
+  display: grid;
+}
+.plantillas,
+.guardar-plantilla {
+  width: min(600px, 94vw);
+  max-height: 88dvh;
+  overflow: auto;
+  gap: 13px;
+  /* Sin relleno abajo: se lo queda el pie, que va pegado. */
+  padding: 20px 22px 0;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--tinta);
+  box-shadow: var(--sombra-3);
+  align-content: start;
+}
+.plantillas::backdrop,
+.guardar-plantilla::backdrop {
+  background: rgba(12, 20, 14, 0.55);
+}
+.plantillas header,
+.guardar-plantilla header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.plantillas h3,
+.guardar-plantilla h3 {
+  margin: 0;
+  font-size: 16.5px;
+  line-height: 1.35;
+  flex: 1;
+}
+.plantillas p,
+.guardar-plantilla p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.plantillas footer,
+.guardar-plantilla footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border-top: 1px solid var(--linea);
+  padding: 12px 0 18px;
+  margin-top: -2px;
+}
+
+/* --- la lista de plantillas --------------------------------------------- */
+.plantillas .lista-plantillas {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Con muchas guardadas, la lista se desliza dentro de su caja y el pie sigue
+     a la vista: la acción no se puede ir debajo del pliegue (fase 22). */
+  max-height: 46dvh;
+  overflow: auto;
+}
+.plantillas .plantilla {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--panel-2);
+  padding: 9px 12px;
+  font: inherit;
+  color: inherit;
+}
+.plantillas .plantilla:hover:not(:disabled) {
+  border-color: var(--linea-fuerte);
+}
+.plantillas .plantilla.elegida {
+  border-color: color-mix(in srgb, var(--acento) 45%, transparent);
+  background: var(--acento-suave);
+}
+.plantillas .plantilla .cabeza {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+}
+.plantillas .plantilla .cifras {
+  font-family: var(--cifras);
+  font-size: 12.5px;
+  color: var(--suave);
+}
+
+.plantillas .encaje {
+  display: grid;
+  gap: 8px;
+}
+.plantillas .encaje ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.plantillas .notas {
+  font-style: italic;
+}
+
+/* --- los campos ---------------------------------------------------------- */
+.plantillas .campo-nombre,
+.guardar-plantilla .campo {
+  display: grid;
+  gap: 4px;
+}
+.plantillas .campo-nombre > span,
+.guardar-plantilla .campo > span:first-child {
+  font-size: 12.5px;
+  color: var(--suave);
+}
+.guardar-plantilla .campo > .tenue {
+  font-size: 12px;
+}
+/* `min-width: 0`: un control dentro de una rejilla mide `min-width: auto` y
+   ensancha su columna. Es el desbordamiento de las fases 12 y 19. */
+.plantillas .campo-nombre input,
+.guardar-plantilla .campo input {
+  width: 100%;
+  min-width: 0;
+}
+.guardar-plantilla .que-se-guarda {
+  background: var(--panel-2);
+  border-radius: var(--r-m);
+  padding: 10px 13px;
+}
+
+/* --- avisos -------------------------------------------------------------- */
+.plantillas .caja-aviso,
+.guardar-plantilla .caja-aviso {
+  display: block;
+  background: var(--aviso-suave);
+  color: var(--aviso);
+  border-radius: var(--r-m);
+  padding: 10px 13px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.plantillas .caja-peligro,
+.guardar-plantilla .caja-peligro {
+  display: block;
+  background: var(--peligro-suave);
+  color: var(--peligro);
+  border-radius: var(--r-m);
+  padding: 10px 13px;
+}
+
+/* --- los dos enlaces bajo las pestañas ----------------------------------- */
+.acciones-plantilla {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+}
+.plantillas .quitar-plantilla {
+  margin-top: 2px;
+  font-size: 12.5px;
+}

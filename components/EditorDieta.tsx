@@ -602,7 +602,9 @@ function EditorCompleto({
           opciones.length > 0 ? (
             <OpcionesComida
               comidaId={comida.id}
+              comidaNombre={comida.nombre}
               dietaId={filas.id}
+              estadoDieta={filas.estado_cantidades ?? "crudo"}
               opciones={opciones}
               activaId={activaId}
               modeloEnergia={filas.modelo_energia ?? "atwater"}

@@ -110,3 +110,41 @@ export interface DietaCompleta extends FilaDieta {
     }
   >;
 }
+
+/**
+ * Una opción guardada para reutilizar (fase 23).
+ *
+ * No lleva kcal: se calculan con el motor al mostrarla. Un ingrediente se puede
+ * corregir desde la fase 12, así que una cifra guardada envejecería en
+ * silencio; y `modelo_energia` es de la dieta, no de la plantilla, así que la
+ * misma plantilla vale distinto en dos dietas.
+ */
+export interface FilaPlantilla {
+  id: string;
+  owner_id: string;
+  nombre: string;
+  /** Para qué comida se pensó. Ordena el selector, no lo filtra. */
+  comida_sugerida: string | null;
+  estado_cantidades: "crudo" | "cocido" | "mixto";
+  notas: string | null;
+  creado_en: string;
+  actualizado_en: string;
+  /** Vienen anidados cuando la consulta los pide. */
+  plantilla_componentes?: FilaPlantillaComponente[];
+}
+
+/** Lo que lleva dentro una plantilla: `componentes` menos comida y opción. */
+export interface FilaPlantillaComponente {
+  id: string;
+  plantilla_id: string;
+  ingrediente_id: number;
+  gramos: number;
+  orden: number;
+  bloqueado: boolean;
+  prioridad: number;
+  min_g: number | null;
+  max_g: number | null;
+  paso_g: number;
+  /** El ingrediente entero, cuando la consulta lo trae anidado. */
+  ingredientes?: FilaIngrediente;
+}

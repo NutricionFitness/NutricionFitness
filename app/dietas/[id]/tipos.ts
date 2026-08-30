@@ -7,6 +7,7 @@
  * `app/ingredientes/tipos.ts`.
  */
 
+import type { FilaPlantillaComponente } from "@/lib/dominio/tipos";
 import type { PasoDelPlan, Plan } from "@/lib/dominio/plan-sustitucion";
 import type { Macros } from "@/lib/dominio/sustituir";
 
@@ -114,3 +115,48 @@ export interface DatosTransferencia {
 
 /** Las tres cosas que se pueden hacer, tal y como se eligen en el diálogo. */
 export type AlcanceTransferencia = "linaje" | "sola" | "copia";
+
+// ---------------------------------------------------------------------------
+// Plantillas de opción (fase 23)
+// ---------------------------------------------------------------------------
+
+/**
+ * Una plantilla tal y como se elige en el selector.
+ *
+ * Trae **sus componentes con el ingrediente dentro** y no unas kcal ya
+ * calculadas: la energía depende del `modelo_energia` de la dieta de destino,
+ * así que la calcula la pantalla que la va a importar. Una comida son cuatro o
+ * seis filas.
+ */
+export interface PlantillaParaElegir {
+  id: string;
+  nombre: string;
+  comidaSugerida: string | null;
+  estadoCantidades: "crudo" | "cocido" | "mixto";
+  notas: string | null;
+  componentes: FilaPlantillaComponente[];
+  /** Alérgenos de la persona de esta dieta que la plantilla lleva dentro. */
+  choques: string[];
+  /** Cuántos de sus ingredientes no tienen los alérgenos revisados a mano. */
+  sinRevisar: number;
+}
+
+export interface DatosPlantillas {
+  plantillas: PlantillaParaElegir[];
+  /** El de la dieta de destino, para poder avisar si no coincide. */
+  estadoDieta: "crudo" | "cocido" | "mixto";
+  /** Si la persona no tiene alergias declaradas, no se enseña esa columna. */
+  conAlergias: boolean;
+}
+
+/** Un componente listo para entrar en una opción, ya con sus gramos finales. */
+export interface ComponenteAImportar {
+  ingredienteId: number;
+  gramos: number;
+  orden: number;
+  bloqueado: boolean;
+  prioridad: number;
+  minG: number | null;
+  maxG: number | null;
+  pasoG: number;
+}

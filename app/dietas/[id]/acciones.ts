@@ -17,11 +17,15 @@ import {
 } from "@/lib/dominio/plan-sustitucion";
 import { alergenosDeIngredientes, catalogoAlergenos } from "@/app/alergenos/consultas";
 import type {
+  ComponenteAImportar,
   ComponenteParaPlan,
+  DatosPlantillas,
   DatosTransferencia,
   PersonaDestino,
   PlanDeCambios,
+  PlantillaParaElegir,
 } from "./tipos";
+import type { FilaPlantillaComponente } from "@/lib/dominio/tipos";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export async function actualizarComponente(
@@ -841,4 +845,303 @@ export async function datosParaTransferir(dietaId: string): Promise<DatosTransfe
     sinRevisar: ingredientes.filter((i) => porIngrediente[i] && !porIngrediente[i].revisado).length,
     destinos,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Plantillas de opción (fase 23)
+// ---------------------------------------------------------------------------
+
+// Lo que necesita `aIngrediente` para poder calcular con el motor, y nada más:
+// una plantilla no enseña ficha, así que no hacen falta ni las medidas caseras
+// ni el código de BEDCA.
+const CAMPOS_INGREDIENTE_PLANTILLA =
+  "id, nombre, grupo, estado, prot_100, hc_100, grasa_100, fibra_100, alcohol_100, kcal_ref";
+
+/**
+ * Las plantillas de la cuenta, listas para elegir una.
+ *
+ * Vienen con sus componentes y el ingrediente dentro —una sola clave ajena
+ * entre `plantillas` y `plantilla_componentes`, así que PostgREST puede anidar;
+ * es la lección de la fase 21 y la fija una comprobación de la décima batería—.
+ *
+ * **Sin kcal.** Las calcula la pantalla con el motor, porque dependen del
+ * `modelo_energia` de la dieta de destino: la misma plantilla vale distinto en
+ * dos dietas y solo la de destino sabe cuál.
+ *
+ * El cruce con las alergias se hace aquí para **todas** las plantillas de una
+ * vez, no una consulta por plantilla al pasar el ratón por encima.
+ */
+export async function plantillasParaImportar(dietaId: string): Promise<DatosPlantillas> {
+  const supabase = await clienteServidor();
+
+  const { data: dieta, error } = await supabase
+    .from("dietas")
+    .select("id, persona_id, estado_cantidades")
+    .eq("id", dietaId)
+    .single();
+  if (error || !dieta) throw new Error(error?.message ?? "No se encuentra la dieta");
+
+  const personaId = (dieta as { persona_id: string | null }).persona_id;
+
+  const [{ data: filas }, { data: alergias }] = await Promise.all([
+    supabase
+      .from("plantillas")
+      .select(
+        `id, nombre, comida_sugerida, estado_cantidades, notas,
+         plantilla_componentes (
+           id, plantilla_id, ingrediente_id, gramos, orden, bloqueado, prioridad,
+           min_g, max_g, paso_g,
+           ingredientes ( ${CAMPOS_INGREDIENTE_PLANTILLA} ) )`,
+      )
+      .order("nombre"),
+    personaId
+      ? supabase.from("persona_alergias").select("alergeno_id").eq("persona_id", personaId)
+      : Promise.resolve({ data: [] as Array<{ alergeno_id: number }> }),
+  ]);
+
+  const plantillas = ((filas ?? []) as unknown as Array<{
+    id: string;
+    nombre: string;
+    comida_sugerida: string | null;
+    estado_cantidades: "crudo" | "cocido" | "mixto";
+    notas: string | null;
+    plantilla_componentes: FilaPlantillaComponente[] | null;
+  }>).map((p) => ({ ...p, plantilla_componentes: p.plantilla_componentes ?? [] }));
+
+  const suyos = ((alergias ?? []) as Array<{ alergeno_id: number }>).map((a) =>
+    Number(a.alergeno_id),
+  );
+
+  const ingredientes = [
+    ...new Set(
+      plantillas.flatMap((p) => p.plantilla_componentes.map((c) => Number(c.ingrediente_id))),
+    ),
+  ];
+
+  const [porIngrediente, catalogo] = await Promise.all([
+    alergenosDeIngredientes(ingredientes),
+    suyos.length ? catalogoAlergenos() : Promise.resolve([]),
+  ]);
+  const nombreAlergeno = new Map(catalogo.map((a) => [a.id, a.nombre]));
+
+  const salida: PlantillaParaElegir[] = plantillas.map((p) => {
+    const ids = p.plantilla_componentes.map((c) => Number(c.ingrediente_id));
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      comidaSugerida: p.comida_sugerida,
+      estadoCantidades: p.estado_cantidades,
+      notas: p.notas,
+      componentes: p.plantilla_componentes,
+      choques: suyos
+        .filter((a) => ids.some((i) => porIngrediente[i]?.alergenos.includes(a)))
+        .map((a) => nombreAlergeno.get(a) ?? "un alérgeno"),
+      sinRevisar: ids.filter((i) => porIngrediente[i] && !porIngrediente[i].revisado).length,
+    };
+  });
+
+  return {
+    plantillas: salida,
+    estadoDieta: (dieta as { estado_cantidades: "crudo" | "cocido" | "mixto" })
+      .estado_cantidades,
+    conAlergias: suyos.length > 0,
+  };
+}
+
+/**
+ * Guarda la opción que se está viendo como plantilla.
+ *
+ * Con un nombre que ya existe **no reemplaza en silencio**: el único
+ * `(owner_id, nombre)` da un 23505, se devuelve `yaExiste` y la pantalla ofrece
+ * reemplazarla a propósito. Es el mismo criterio que los borrados de la fase 8:
+ * decir lo que va a pasar antes de que pase.
+ *
+ * Reemplazar **actualiza la fila**, no la borra y la vuelve a crear: así
+ * `creado_en` sigue diciendo la verdad y `actualizado_en` —que pone el
+ * disparador `plantillas_tocar`— dice cuándo se tocó.
+ */
+export async function guardarComoPlantilla(datos: {
+  opcionId: string;
+  nombre: string;
+  comidaSugerida: string | null;
+  estadoCantidades: "crudo" | "cocido" | "mixto";
+  notas?: string | null;
+  /** Sobrescribir la que ya se llama así. Solo cuando lo ha pedido quien mira. */
+  reemplazar?: boolean;
+}): Promise<{ id: string | null; error: string | null; yaExiste: boolean }> {
+  const supabase = await clienteServidor();
+  const nombre = datos.nombre.trim();
+  if (!nombre) return { id: null, error: "La plantilla necesita un nombre.", yaExiste: false };
+
+  const { data: origen, error: errorOrigen } = await supabase
+    .from("componentes")
+    .select("ingrediente_id, gramos, orden, bloqueado, prioridad, min_g, max_g, paso_g")
+    .eq("opcion_id", datos.opcionId)
+    .order("orden");
+  if (errorOrigen) return { id: null, error: errorOrigen.message, yaExiste: false };
+  if (!origen?.length)
+    return {
+      id: null,
+      error: "Esta opción no tiene ningún alimento: no hay nada que guardar.",
+      yaExiste: false,
+    };
+
+  const campos = {
+    nombre,
+    comida_sugerida: datos.comidaSugerida?.trim() || null,
+    estado_cantidades: datos.estadoCantidades,
+    notas: datos.notas?.trim() || null,
+  };
+
+  let plantillaId: string;
+
+  if (datos.reemplazar) {
+    const { data: vieja } = await supabase
+      .from("plantillas")
+      .select("id")
+      .eq("nombre", nombre)
+      .maybeSingle();
+    if (!vieja) return { id: null, error: "Ya no existe esa plantilla.", yaExiste: false };
+
+    plantillaId = vieja.id as string;
+    const { error: errorUpd } = await supabase
+      .from("plantillas")
+      .update(campos)
+      .eq("id", plantillaId);
+    if (errorUpd) return { id: null, error: errorUpd.message, yaExiste: false };
+
+    const { error: errorLimpia } = await supabase
+      .from("plantilla_componentes")
+      .delete()
+      .eq("plantilla_id", plantillaId);
+    if (errorLimpia) return { id: null, error: errorLimpia.message, yaExiste: false };
+  } else {
+    const { data: creada, error: errorIns } = await supabase
+      .from("plantillas")
+      .insert(campos)
+      .select("id")
+      .single();
+
+    if (errorIns || !creada)
+      return {
+        id: null,
+        error:
+          errorIns?.code === "23505"
+            ? `Ya tienes una plantilla que se llama «${nombre}».`
+            : (errorIns?.message ?? "No se ha podido guardar la plantilla."),
+        yaExiste: errorIns?.code === "23505",
+      };
+    plantillaId = creada.id as string;
+  }
+
+  const { error: errorComp } = await supabase.from("plantilla_componentes").insert(
+    origen.map((c, i) => ({ ...c, plantilla_id: plantillaId, orden: c.orden ?? i })),
+  );
+  if (errorComp) return { id: plantillaId, error: errorComp.message, yaExiste: false };
+
+  return { id: plantillaId, error: null, yaExiste: false };
+}
+
+/**
+ * Mete una plantilla en una comida.
+ *
+ * Los gramos llegan **ya decididos** desde `lib/dominio/plantillas.ts`, que es
+ * quien corre el motor para cuadrarla contra la referencia y quien comprueba
+ * después si ha quedado cuadrada. Aquí solo se escribe.
+ *
+ * `opcionId` no nulo significa rellenar una opción vacía —la única que tiene una
+ * comida recién creada—: se le pone el nombre de la plantilla y sus alimentos.
+ * Nulo, crear una opción nueva.
+ */
+export async function importarPlantilla(datos: {
+  comidaId: string;
+  /** La opción vacía que se rellena, o null para crear una. */
+  opcionId: string | null;
+  nombre: string;
+  componentes: ComponenteAImportar[];
+  dietaId: string;
+}): Promise<{ opcionId: string | null; error: string | null }> {
+  const supabase = await clienteServidor();
+  const nombre = datos.nombre.trim();
+  if (!nombre) return { opcionId: null, error: "La opción necesita un nombre." };
+  if (!datos.componentes.length)
+    return { opcionId: null, error: "La plantilla no tiene ningún alimento." };
+
+  let opcionId = datos.opcionId;
+
+  if (opcionId) {
+    const { error } = await supabase
+      .from("opciones")
+      .update({ nombre })
+      .eq("id", opcionId);
+    if (error)
+      return {
+        opcionId: null,
+        error:
+          error.code === "23505"
+            ? "Ya hay una opción con ese nombre en esta comida."
+            : error.message,
+      };
+  } else {
+    const { data: hermanas } = await supabase
+      .from("opciones")
+      .select("orden")
+      .eq("comida_id", datos.comidaId)
+      .order("orden", { ascending: false })
+      .limit(1);
+    const orden = ((hermanas?.[0]?.orden as number | undefined) ?? -1) + 1;
+
+    const { data: creada, error } = await supabase
+      .from("opciones")
+      .insert({ comida_id: datos.comidaId, nombre, orden })
+      .select("id")
+      .single();
+    if (error || !creada)
+      return {
+        opcionId: null,
+        error:
+          error?.code === "23505"
+            ? "Ya hay una opción con ese nombre en esta comida."
+            : (error?.message ?? "No se ha podido crear la opción."),
+      };
+    opcionId = creada.id as string;
+  }
+
+  const { error: errorComp } = await supabase.from("componentes").insert(
+    datos.componentes.map((c) => ({
+      comida_id: datos.comidaId,
+      opcion_id: opcionId,
+      ingrediente_id: c.ingredienteId,
+      gramos: c.gramos,
+      orden: c.orden,
+      bloqueado: c.bloqueado,
+      prioridad: c.prioridad,
+      min_g: c.minG,
+      max_g: c.maxG,
+      paso_g: c.pasoG,
+    })),
+  );
+  if (errorComp) return { opcionId, error: errorComp.message };
+
+  // Se deja puesta la que se acaba de meter: quien la importa quiere verla.
+  await supabase
+    .from("comidas")
+    .update({ opcion_activa_id: opcionId })
+    .eq("id", datos.comidaId);
+
+  revalidatePath(`/dietas/${datos.dietaId}`);
+  return { opcionId, error: null };
+}
+
+/**
+ * Quita una plantilla.
+ *
+ * No arrastra nada: una plantilla es una foto, y las opciones que salieron de
+ * ella son copias que viven en sus dietas. Sus componentes se van con ella
+ * (cascada).
+ */
+export async function borrarPlantilla(id: string): Promise<{ error: string | null }> {
+  const supabase = await clienteServidor();
+  const { error } = await supabase.from("plantillas").delete().eq("id", id);
+  return { error: error?.message ?? null };
 }

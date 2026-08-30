@@ -7,8 +7,12 @@ import {
   borrarOpcion,
   crearOpcion,
   guardarGramos,
+  plantillasParaImportar,
   renombrarOpcion,
 } from "@/app/dietas/[id]/acciones";
+import type { DatosPlantillas } from "@/app/dietas/[id]/tipos";
+import DialogoGuardarPlantilla from "./DialogoGuardarPlantilla";
+import DialogoPlantillas from "./DialogoPlantillas";
 import { compararOpcion, objetivoParaCuadrar, type Equivalencia } from "@/lib/dominio/opciones";
 import { ajustar, type Componente, type ModeloEnergia } from "@/lib/motor";
 import type { FilaOpcion } from "@/lib/dominio/tipos";
@@ -34,7 +38,9 @@ import type { FilaOpcion } from "@/lib/dominio/tipos";
  */
 export default function OpcionesComida({
   comidaId,
+  comidaNombre,
   dietaId,
+  estadoDieta,
   opciones,
   activaId,
   modeloEnergia,
@@ -45,7 +51,9 @@ export default function OpcionesComida({
   onHecho,
 }: {
   comidaId: string;
+  comidaNombre: string;
   dietaId: string;
+  estadoDieta: "crudo" | "cocido" | "mixto";
   opciones: FilaOpcion[];
   activaId: string | null;
   modeloEnergia: ModeloEnergia;
@@ -57,6 +65,12 @@ export default function OpcionesComida({
   const [renombrando, setRenombrando] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
   const [fallo, setFallo] = useState<string | null>(null);
+  // Las plantillas se piden al pulsar, no al pintar la comida: son cinco
+  // consultas para algo que no se abre casi nunca, y meterlas en un efecto es
+  // la trampa de la fase 16.
+  const [plantillas, setPlantillas] = useState<DatosPlantillas | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [guardada, setGuardada] = useState<string | null>(null);
 
   const orden = [...opciones].sort((a, b) => a.orden - b.orden || a.id.localeCompare(b.id));
   const activa = orden.find((o) => o.id === activaId) ?? orden[0];
@@ -190,6 +204,79 @@ export default function OpcionesComida({
           </button>
         )}
       </div>
+
+      <p className="acciones-plantilla">
+        <button
+          type="button"
+          className="enlace"
+          disabled={pendiente}
+          title="Meter aquí una opción que tengas guardada"
+          onClick={() =>
+            iniciar(async () => {
+              setFallo(null);
+              setPlantillas(await plantillasParaImportar(dietaId));
+            })
+          }
+        >
+          Importar plantilla
+        </button>
+        <span className="tenue" aria-hidden>
+          ·
+        </span>
+        <button
+          type="button"
+          className="enlace"
+          disabled={pendiente}
+          title={`Guardar «${activa.nombre}» para poder usarla en otras comidas`}
+          onClick={() => {
+            setFallo(null);
+            setGuardada(null);
+            setGuardando(true);
+          }}
+        >
+          guardar esta como plantilla
+        </button>
+      </p>
+
+      {guardada && (
+        <p className="tenue">
+          Guardada como plantilla «{guardada}». Está disponible en cualquier comida de
+          cualquier dieta.
+        </p>
+      )}
+
+      {plantillas && (
+        <DialogoPlantillas
+          datos={plantillas}
+          comidaId={comidaId}
+          comidaNombre={comidaNombre}
+          dietaId={dietaId}
+          opciones={opciones}
+          porOpcion={porOpcion}
+          modeloEnergia={modeloEnergia}
+          onCerrar={() => setPlantillas(null)}
+          onHecho={() => {
+            setPlantillas(null);
+            onHecho();
+          }}
+        />
+      )}
+
+      {guardando && (
+        <DialogoGuardarPlantilla
+          opcionId={activa.id}
+          opcionNombre={activa.nombre}
+          comidaNombre={comidaNombre}
+          estadoDieta={estadoDieta}
+          componentes={porOpcion[activa.id] ?? []}
+          modeloEnergia={modeloEnergia}
+          onCerrar={() => setGuardando(false)}
+          onHecho={(n) => {
+            setGuardando(false);
+            setGuardada(n);
+          }}
+        />
+      )}
 
       {renombrando === activa.id && (
         <div className="fila renombrar-opcion">
