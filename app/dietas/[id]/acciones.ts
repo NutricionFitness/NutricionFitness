@@ -27,6 +27,7 @@ import type {
 } from "./tipos";
 import type { FilaPlantillaComponente } from "@/lib/dominio/tipos";
 import { clienteServidor } from "@/lib/supabase/servidor";
+import { opcionDeComida } from "@/lib/supabase/opciones";
 
 export async function actualizarComponente(
   id: string,
@@ -46,9 +47,13 @@ export async function actualizarComponente(
  * Añade un ingrediente a una comida, dentro de una opción concreta.
  *
  * `opcionId` es obligatoria desde la migración 0012: un componente cuelga de
- * una opción, no de la comida. Si llega vacía —una pantalla vieja, una dieta a
- * la que le falte la migración— se usa la opción activa de esa comida en vez de
- * fallar con un error de la base que no dice nada.
+ * una opción, no de la comida. Si llega vacía se resuelve con
+ * `opcionDeComida`, que existe por un fallo de producción: **una dieta recién
+ * creada no aceptaba su primer ingrediente**. Aquí se anidaba `opciones` dentro
+ * de `comidas`, que desde la 0012 es ambiguo —dos claves ajenas—, el error no
+ * se miraba, y la fila entraba con `opcion_id` nulo hasta que el disparador la
+ * paraba con «la opción <NULL> no existe». Era el fallo de la fase 21 en el
+ * único sitio al que no llegó aquel arreglo.
  */
 export async function anadirComponente(
   comidaId: string,
@@ -61,17 +66,9 @@ export async function anadirComponente(
 
   let opcion = opcionId ?? null;
   if (!opcion) {
-    const { data: comida } = await supabase
-      .from("comidas")
-      .select("opcion_activa_id, opciones ( id, orden )")
-      .eq("id", comidaId)
-      .single();
-    const opciones = ((comida as { opciones?: Array<{ id: string; orden: number }> } | null)
-      ?.opciones ?? []).sort((a, b) => a.orden - b.orden);
-    opcion =
-      (comida as { opcion_activa_id?: string | null } | null)?.opcion_activa_id ??
-      opciones[0]?.id ??
-      null;
+    const cual = await opcionDeComida(supabase, comidaId);
+    if (cual.error) throw new Error(cual.error);
+    opcion = cual.id;
   }
 
   const { error } = await supabase.from("componentes").insert({
