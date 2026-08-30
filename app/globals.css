@@ -2878,3 +2878,142 @@ button:has(> svg + span) {
     margin-left: 0;
   }
 }
+
+/* ============================================ transferir una dieta ======= */
+/* Fase 22. Mismo esqueleto que `.plan-cambios`: un `<dialog>` modal se pinta
+   en la capa superior del navegador y no lo puede recortar ningún `overflow`,
+   que es lo que se comió el desplegable de la fase 11. */
+.transferir[open] {
+  display: grid;
+}
+.transferir {
+  width: min(560px, 94vw);
+  max-height: 88dvh;
+  overflow: auto;
+  gap: 14px;
+  /* Sin relleno abajo: se lo queda el pie, que va pegado (ver más abajo). */
+  padding: 20px 22px 0;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--tinta);
+  box-shadow: var(--sombra-3);
+  align-content: start;
+}
+.transferir::backdrop {
+  background: rgba(12, 20, 14, 0.55);
+}
+.transferir header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.transferir h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  flex: 1;
+}
+.transferir p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.transferir .a-quien {
+  display: grid;
+  gap: 5px;
+}
+.transferir .a-quien > span {
+  font-size: 12.5px;
+  color: var(--suave);
+}
+/* `min-width: 0` no es decorativo: un control de formulario dentro de una
+   rejilla mide `min-width: auto` y ensancha su columna. Es el desbordamiento
+   de las fases 12 y 19, que volvió las dos veces por no ponerlo. */
+.transferir .a-quien select {
+  width: 100%;
+  min-width: 0;
+}
+
+.transferir .opciones {
+  display: grid;
+  gap: 8px;
+}
+.transferir .opcion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1px 9px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--panel-2);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.transferir .opcion.elegida {
+  border-color: color-mix(in srgb, var(--acento) 45%, transparent);
+  background: var(--acento-suave);
+}
+.transferir .opcion input {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin: 3px 0 0;
+  accent-color: var(--acento);
+}
+.transferir .opcion .que {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.transferir .opcion .consecuencia {
+  font-size: 12.5px;
+  color: var(--suave);
+  line-height: 1.45;
+}
+
+.transferir .consecuencias {
+  display: grid;
+  gap: 7px;
+}
+.transferir .consecuencias .tenue {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* Rojo y no ámbar: una alergia no es un desvío, y es el mismo color que el
+   distintivo del listado. `display: block` a propósito —`.aviso-caja` es
+   `flex`, y una frase con `<strong>` dentro se le desarma en trozos—. */
+.transferir .caja-peligro {
+  display: block;
+  background: var(--peligro-suave);
+  color: var(--peligro);
+  border-radius: var(--r-m);
+  padding: 10px 13px;
+}
+.transferir .hecho {
+  background: var(--acento-suave);
+  color: var(--tinta);
+  border-radius: var(--r-m);
+  padding: 11px 13px;
+}
+
+/* El pie va pegado abajo, no al final del texto.
+   Con «solo esta versión» elegida, la explicación de qué pasa con lo que se
+   queda ocupa cuatro líneas, y a 390 px el diálogo pasa a deslizarse: los dos
+   botones se iban debajo del pliegue y había que buscarlos deslizando. Es el
+   mismo fallo que el campo del escáner de la fase 14, y se vio igual —midiendo
+   `elementFromPoint` sobre cada botón, no mirando la captura, porque en la
+   captura sencillamente no salían—. */
+.transferir footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border-top: 1px solid var(--linea);
+  padding: 12px 0 18px;
+  margin-top: -2px;
+}

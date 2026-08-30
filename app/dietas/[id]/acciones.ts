@@ -15,7 +15,13 @@ import {
   repartoPct,
   type ComponenteCambiable,
 } from "@/lib/dominio/plan-sustitucion";
-import type { ComponenteParaPlan, PlanDeCambios } from "./tipos";
+import { alergenosDeIngredientes, catalogoAlergenos } from "@/app/alergenos/consultas";
+import type {
+  ComponenteParaPlan,
+  DatosTransferencia,
+  PersonaDestino,
+  PlanDeCambios,
+} from "./tipos";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export async function actualizarComponente(
@@ -639,4 +645,200 @@ export async function guardarGramos(
   }
   revalidatePath(`/dietas/${dietaId}`);
   return { error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Transferir una dieta a otra persona (fase 22)
+// ---------------------------------------------------------------------------
+
+/**
+ * Refrescar las dos personas implicadas.
+ *
+ * Se revalida el patrón de ruta y no una ruta concreta porque cambian **dos**
+ * pantallas —la de origen, de donde se va, y la de destino, donde aparece— y en
+ * el caso del linaje pueden moverse versiones que ni siquiera se estaban
+ * mirando. Revalidar solo la de origen dejaría la de destino mintiendo hasta
+ * que caducara.
+ */
+function refrescarPersonas(dietaId: string) {
+  revalidatePath("/personas");
+  revalidatePath("/personas/[id]", "page");
+  revalidatePath(`/dietas/${dietaId}`);
+}
+
+/**
+ * Mueve la dieta a otra persona de la misma cuenta.
+ *
+ * `alcance`:
+ *
+ *  · `'linaje'` — el árbol de versiones entero, se pulse en la versión que se
+ *    pulse. Es lo que se quiere casi siempre: dejar media familia en cada
+ *    persona parte el historial en dos.
+ *  · `'sola'` — solo esa, desgajada: sale del árbol y **sus hijas se recuelgan
+ *    de su abuela**, para que no queden apuntando a una dieta que ya es de otra
+ *    persona.
+ *
+ * Devuelve cuántas ha movido en vez de lanzar, porque el diálogo tiene que
+ * poder enseñar el motivo sin cerrarse —«esa persona es de otra cuenta»,
+ * «la dieta ya es de esa persona»— y una excepción aquí se lleva la pantalla
+ * entera a `app/error.tsx`.
+ */
+export async function transferirDieta(
+  dietaId: string,
+  personaDestinoId: string,
+  alcance: "linaje" | "sola",
+): Promise<{ movidas: number; error: string | null }> {
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase.rpc("transferir_dieta", {
+    p_dieta_id: dietaId,
+    p_persona_destino_id: personaDestinoId,
+    p_alcance: alcance,
+  });
+  if (error) return { movidas: 0, error: error.message };
+
+  refrescarPersonas(dietaId);
+  return { movidas: Number(data ?? 0), error: null };
+}
+
+/**
+ * Copia la dieta en otra persona; el original se queda donde está.
+ *
+ * Es `duplicar_dieta` con su tercer parámetro, que existe desde la fase 20 y no
+ * tenía pantalla. No hace falta función nueva en la base: lo que le faltaba era
+ * comprobar de quién es esa persona, y eso lo añadió la 0013.
+ *
+ * No redirige, a diferencia de `duplicarDieta`: aquí se está en el listado de
+ * la persona de origen, y saltar a una dieta que acaba de nacer en otra persona
+ * es perder el sitio. El diálogo enseña el enlace y decide quien lo pulsa.
+ */
+export async function copiarDietaAPersona(
+  dietaId: string,
+  personaDestinoId: string,
+  nombre?: string,
+): Promise<{ nuevaId: string | null; error: string | null }> {
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase.rpc("duplicar_dieta", {
+    p_dieta_id: dietaId,
+    p_nombre: nombre?.trim() || null,
+    p_persona_id: personaDestinoId,
+  });
+  if (error) return { nuevaId: null, error: error.message };
+
+  refrescarPersonas(dietaId);
+  return { nuevaId: (data as string) ?? null, error: null };
+}
+
+/**
+ * Lo que hace falta para dibujar el diálogo de transferencia.
+ *
+ * Cinco consultas y un cruce en memoria, todas en la misma llamada. Las
+ * alergias se cruzan para **todas** las personas candidatas a la vez: son dos
+ * consultas fijas —los alérgenos de los ingredientes de la dieta, y las
+ * alergias declaradas de las personas de la cuenta— en vez de una por cada vez
+ * que se cambia de persona en el selector.
+ *
+ * Se miran los ingredientes de **todas las opciones**, no solo de la activa: la
+ * dieta lleva ese alimento dentro aunque hoy esté en la alternativa que no se
+ * está viendo. Es el mismo criterio que el distintivo «posible alergia» del
+ * listado.
+ */
+export async function datosParaTransferir(dietaId: string): Promise<DatosTransferencia> {
+  const supabase = await clienteServidor();
+
+  const { data: dieta, error } = await supabase
+    .from("dietas")
+    .select("id, nombre, version, persona_id, dieta_padre_id")
+    .eq("id", dietaId)
+    .single();
+  if (error || !dieta) throw new Error(error?.message ?? "No se encuentra la dieta");
+
+  const personaId = (dieta as { persona_id: string | null }).persona_id;
+  const padreId = (dieta as { dieta_padre_id: string | null }).dieta_padre_id;
+
+  const [{ data: linaje }, { data: personas }, { data: comidas }] = await Promise.all([
+    supabase.rpc("linaje_dieta", { p_dieta_id: dietaId }),
+    // El RLS ya deja fuera las personas de otras cuentas: no hace falta filtrar
+    // por `owner_id`, y filtrar aquí sería fiarse del cliente para algo que la
+    // base ya garantiza.
+    supabase.from("personas").select("id, nombre, peso_kg").order("nombre"),
+    supabase.from("comidas").select("id, componentes ( ingrediente_id )").eq("dieta_id", dietaId),
+  ]);
+
+  const versiones = (linaje ?? []) as Array<{
+    id: string;
+    nombre: string;
+    version: number;
+    dieta_padre_id: string | null;
+  }>;
+
+  const candidatas = ((personas ?? []) as Array<{
+    id: string;
+    nombre: string;
+    peso_kg: unknown;
+  }>).filter((p) => p.id !== personaId);
+
+  // --- los ingredientes de la dieta, sin repetir ----------------------------
+  const ingredientes = [
+    ...new Set(
+      ((comidas ?? []) as unknown as Array<{ componentes: { ingrediente_id: number }[] | null }>)
+        .flatMap((c) => c.componentes ?? [])
+        .map((c) => Number(c.ingrediente_id)),
+    ),
+  ];
+
+  const [porIngrediente, catalogo, { data: declaradas }] = await Promise.all([
+    alergenosDeIngredientes(ingredientes),
+    catalogoAlergenos(),
+    candidatas.length
+      ? supabase
+          .from("persona_alergias")
+          .select("persona_id, alergeno_id")
+          .in("persona_id", candidatas.map((p) => p.id))
+      : Promise.resolve({ data: [] as Array<{ persona_id: string; alergeno_id: number }> }),
+  ]);
+
+  const nombreAlergeno = new Map(catalogo.map((a) => [a.id, a.nombre]));
+
+  const suyos = new Map<string, number[]>();
+  for (const f of (declaradas ?? []) as Array<{ persona_id: string; alergeno_id: number }>) {
+    const lista = suyos.get(f.persona_id) ?? [];
+    lista.push(Number(f.alergeno_id));
+    suyos.set(f.persona_id, lista);
+  }
+
+  const destinos: PersonaDestino[] = candidatas.map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    pesoKg: p.peso_kg === null || p.peso_kg === undefined ? null : Number(p.peso_kg),
+    choques: (suyos.get(p.id) ?? [])
+      .map((idAlergeno) => ({
+        alergeno: nombreAlergeno.get(idAlergeno) ?? "un alérgeno",
+        ingredientes: ingredientes.filter((i) =>
+          porIngrediente[i]?.alergenos.includes(idAlergeno),
+        ).length,
+      }))
+      .filter((c) => c.ingredientes > 0)
+      .sort((a, b) => b.ingredientes - a.ingredientes),
+  }));
+
+  const origen = personaId
+    ? ((personas ?? []) as Array<{ id: string; nombre: string; peso_kg: unknown }>)
+        .filter((p) => p.id === personaId)
+        .map((p) => ({
+          id: p.id,
+          nombre: p.nombre,
+          pesoKg: p.peso_kg === null || p.peso_kg === undefined ? null : Number(p.peso_kg),
+        }))[0] ?? null
+    : null;
+
+  return {
+    dietaNombre: (dieta as { nombre: string }).nombre,
+    version: Number((dieta as { version: number }).version),
+    origen,
+    versiones: versiones.length || 1,
+    hijas: versiones.filter((v) => v.dieta_padre_id === dietaId).length,
+    nombrePadre: versiones.find((v) => v.id === padreId)?.nombre ?? null,
+    sinRevisar: ingredientes.filter((i) => porIngrediente[i] && !porIngrediente[i].revisado).length,
+    destinos,
+  };
 }

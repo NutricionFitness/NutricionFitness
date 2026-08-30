@@ -77,3 +77,20 @@ export function IconoCodigoBarras() {
     </svg>
   );
 }
+
+/**
+ * Una persona y una flecha: «esto se va con otro».
+ *
+ * No es la flecha sola —que en una fila de acciones se lee como «abrir»— ni dos
+ * personas, que a 16 px se convierten en una mancha.
+ */
+export function IconoTransferir() {
+  return (
+    <svg {...base}>
+      <circle cx="7.5" cy="7" r="3.2" />
+      <path d="M2.8 20c0-2.7 2.1-4.7 4.7-4.7s4.7 2 4.7 4.7" />
+      <path d="M14.6 11.2h6.4" />
+      <path d="M18.3 8.5l2.7 2.7-2.7 2.7" />
+    </svg>
+  );
+}

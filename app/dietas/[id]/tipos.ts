@@ -59,3 +59,58 @@ export interface DatosPlan {
   alergenos: number[];
   conAlergias: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Transferir una dieta a otra persona (fase 22)
+// ---------------------------------------------------------------------------
+
+/** Un alérgeno de la persona de destino que esta dieta lleva dentro. */
+export interface ChoqueAlergia {
+  alergeno: string;
+  /** Cuántos ingredientes distintos de la dieta lo llevan. */
+  ingredientes: number;
+}
+
+/** Una persona a la que se le puede pasar la dieta. */
+export interface PersonaDestino {
+  id: string;
+  nombre: string;
+  pesoKg: number | null;
+  /** Vacío si esta dieta no choca con ninguna de sus alergias. */
+  choques: ChoqueAlergia[];
+}
+
+/**
+ * Todo lo que el diálogo necesita, en una sola ida al servidor.
+ *
+ * Se pide **al pulsar el botón**, no en un efecto del diálogo y no en la página:
+ *
+ *  · en la página sería trabajo en cada carga del listado para algo que casi
+ *    nunca se abre;
+ *  · en un efecto sería la trampa de la fase 16, y además el cruce de alergias
+ *    tendría que rehacerse cada vez que se cambia de persona en el selector.
+ *
+ * Por eso viene el cruce de **todos** los destinos posibles de una vez: son dos
+ * consultas más, no una por persona, y el diálogo se queda sin nada que
+ * consultar mientras está abierto.
+ */
+export interface DatosTransferencia {
+  dietaNombre: string;
+  /** Qué número de versión es la que se está transfiriendo. */
+  version: number;
+  /** Nula si la dieta no cuelga de ninguna persona, que el esquema lo permite. */
+  origen: { id: string; nombre: string; pesoKg: number | null } | null;
+  /** Cuántas dietas tiene el árbol de versiones entero. */
+  versiones: number;
+  /** Cuántas cuelgan directamente de esta. */
+  hijas: number;
+  /** El nombre de su madre, para poder decir de quién pasarían a colgar. */
+  nombrePadre: string | null;
+  /** Cuántos ingredientes de la dieta no tienen los alérgenos revisados. */
+  sinRevisar: number;
+  /** Las personas de la cuenta menos la que ya la tiene. */
+  destinos: PersonaDestino[];
+}
+
+/** Las tres cosas que se pueden hacer, tal y como se eligen en el diálogo. */
+export type AlcanceTransferencia = "linaje" | "sola" | "copia";
