@@ -337,6 +337,55 @@ header.barra > div {
   text-decoration: none;
   white-space: nowrap;
 }
+/* La portada de entrada.
+
+   El ancho y el margen estaban en un `style` en línea; se mudan aquí porque
+   desde una `style` no se puede responder a la ALTURA de la ventana, y es el
+   alto lo que se acaba: con el logo puesto, en un móvil bajo el botón de
+   «Entrar» caía por debajo del pliegue. Medido: a 320x568 cabía con +71 px de
+   sobra y pasó a -37. */
+.entrada {
+  max-width: 380px;
+  margin: 56px auto;
+}
+@media (max-height: 720px) {
+  .entrada {
+    margin-top: 28px;
+  }
+}
+@media (max-height: 620px) {
+  .entrada {
+    margin-top: 18px;
+  }
+}
+
+/* El logo en grande, en la portada de entrada.
+
+   Centrado con `margin: 0 auto` sobre un `display: block`, no con un
+   contenedor de más. Se encoge en pantallas bajas —no estrechas: BAJAS— porque
+   ahí lo que se acaba es el alto, y lo que no puede quedarse por debajo del
+   pliegue es el botón de «Entrar». Es la lección de la fase 22. */
+.logo-entrada {
+  display: block;
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 16px;
+}
+@media (max-height: 720px) {
+  .logo-entrada {
+    width: 96px;
+    height: 96px;
+    margin-bottom: 12px;
+  }
+}
+@media (max-height: 620px) {
+  .logo-entrada {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 10px;
+  }
+}
+
 /* El logo es una imagen, no el glifo de línea que había antes: ni hereda
    `color` ni se le puede cambiar el tono desde aquí. 24 px y no 21 porque
    tiene más detalle dentro —cuenco, manzana, hojas— y a 21 se empasta; se

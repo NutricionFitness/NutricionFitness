@@ -23,7 +23,18 @@ export default function Login() {
 
   if (olvidada)
     return (
-      <div style={{ maxWidth: 380, margin: "56px auto" }}>
+      <div className="entrada">
+        {/* El logo, en grande. Es la única pantalla de la app con sitio
+            para él; en el resto va a 24 px en la barra. Decorativo
+            (`alt=""`): el nombre de la app ya está en la barra y en el
+            título del documento, y aquí el `h1` dice lo que toca hacer. */}
+        <img
+          src="/logo-grande.webp"
+          alt=""
+          className="logo-entrada"
+          width={132}
+          height={132}
+        />
         <h1>Recuperar la contraseña</h1>
         <p className="sub">Te mandamos un enlace para elegir una nueva.</p>
         <form action={accionOlvido} className="tarjeta rejilla">
@@ -51,7 +62,18 @@ export default function Login() {
     );
 
   return (
-    <div style={{ maxWidth: 380, margin: "56px auto" }}>
+    <div className="entrada">
+      {/* El logo, en grande. Es la única pantalla de la app con sitio
+          para él; en el resto va a 24 px en la barra. Decorativo
+          (`alt=""`): el nombre de la app ya está en la barra y en el
+          título del documento, y aquí el `h1` dice lo que toca hacer. */}
+      <img
+        src="/logo-grande.webp"
+        alt=""
+        className="logo-entrada"
+        width={132}
+        height={132}
+      />
       <h1>Entrar</h1>
       <p className="sub">Con tu usuario y tu contraseña.</p>
       <p style={{ fontSize: "0.8rem" }}>Acceso restringido para entrenadores. Si quieres acceder al comparador público pincha arriba en la pestaña <a href="https://nutricion-fitness.vercel.app/comparador"><em>Comparador</em></a>.</p>

@@ -49,7 +49,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
                   del enlace lo pone el `aria-label` de arriba y no este `alt`,
                   porque por debajo de 480 px `.marca-nombre` se esconde y el
                   enlace se quedaría sin nombre. */}
-              <img src="/logo.png" alt="" width={24} height={24} />
+              <img src="/logo.webp" alt="" width={24} height={24} />
               <span className="marca-nombre">App Nutrición</span>
             </Link>
 
