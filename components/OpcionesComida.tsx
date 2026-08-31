@@ -83,10 +83,10 @@ export default function OpcionesComida({
   const eq: Equivalencia | null = esReferencia
     ? null
     : compararOpcion(
-        porOpcion[referencia.id] ?? [],
-        porOpcion[activa.id] ?? [],
-        modeloEnergia,
-      );
+      porOpcion[referencia.id] ?? [],
+      porOpcion[activa.id] ?? [],
+      modeloEnergia,
+    );
 
   function nueva() {
     setFallo(null);
@@ -196,7 +196,7 @@ export default function OpcionesComida({
             title={
               esReferencia
                 ? `Quitar «${activa.nombre}» y sus alimentos. Es la referencia: ` +
-                  "pasará a serlo la siguiente, y las demás se compararán con ella."
+                "pasará a serlo la siguiente, y las demás se compararán con ella."
                 : `Quitar «${activa.nombre}» y sus alimentos`
             }
           >
@@ -234,7 +234,7 @@ export default function OpcionesComida({
             setGuardando(true);
           }}
         >
-          guardar esta como plantilla
+          Guardar esta como plantilla
         </button>
       </p>
 

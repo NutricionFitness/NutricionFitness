@@ -46,12 +46,12 @@ export default function ListaPlantillas({ plantillas }: { plantillas: PlantillaG
   const q = plano(busca.trim());
   const lista = q
     ? plantillas.filter((p) =>
-        plano(
-          [p.nombre, p.comidaSugerida ?? "", p.notas ?? ""]
-            .concat(p.componentes.map((c) => c.ingredientes?.nombre ?? ""))
-            .join(" "),
-        ).includes(q),
-      )
+      plano(
+        [p.nombre, p.comidaSugerida ?? "", p.notas ?? ""]
+          .concat(p.componentes.map((c) => c.ingredientes?.nombre ?? ""))
+          .join(" "),
+      ).includes(q),
+    )
     : plantillas;
 
   function empezarAEditar(p: PlantillaGuardada) {
@@ -187,11 +187,11 @@ export default function ListaPlantillas({ plantillas }: { plantillas: PlantillaG
                       </span>
                       <span className="acciones">
                         <button className="enlace" onClick={() => empezarAEditar(p)}>
-                          editar
+                          Editar
                         </button>
                         <BotonPeligroso
                           clase="enlace peligroso"
-                          etiqueta="quitar"
+                          etiqueta="Quitar"
                           aviso={`Se borra «${p.nombre}». Las opciones que ya salieron de ella se quedan como están.`}
                           confirmacion="Sí, quitarla"
                           onConfirmar={async () => {

@@ -157,7 +157,7 @@ export default function CabeceraDieta({
           no se imprime. */}
       <NotaEditable
         valor={dieta.descripcion}
-        etiquetaVacia="añadir una nota a esta dieta"
+        etiquetaVacia="Añadir una nota a esta dieta"
         marcador="2 L de agua al día. La cena, dos horas antes de dormir…"
         onGuardar={(texto) => actualizarDieta(dieta.id, { descripcion: texto })}
         extra={

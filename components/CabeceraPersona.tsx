@@ -67,7 +67,7 @@ export default function CabeceraPersona({
             style={{ fontSize: 13.5, fontWeight: 400 }}
             onClick={() => setEditando(true)}
           >
-            renombrar
+            Renombrar
           </button>
         </h1>
       )}
@@ -148,7 +148,7 @@ export default function CabeceraPersona({
           vale para todas sus dietas. */}
       <NotaEditable
         valor={persona.notas}
-        etiquetaVacia="añadir una nota sobre esta persona"
+        etiquetaVacia="Añadir una nota sobre esta persona"
         marcador="Entrena martes y jueves. No le gusta el pescado azul…"
         onGuardar={(texto) => actualizarPersona(persona.id, { notas: texto })}
       />
