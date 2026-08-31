@@ -126,7 +126,7 @@ export default function CabeceraPersona({
             title="Sirve para leer los macros de sus dietas en gramos por kilo de peso"
           >
             {persona.peso_kg === null
-              ? "poner peso"
+              ? "Poner peso"
               : `${persona.peso_kg.toLocaleString("es-ES")} kg`}
           </button>
         )}
