@@ -165,3 +165,160 @@ export async function actualizarIngrediente(id: number, datos: DatosIngrediente)
   revalidatePath("/ingredientes");
   revalidatePath(`/ingredientes/${id}`);
 }
+// ---------------------------------------------------------------------------
+// Medidas caseras propias (fase 25)
+// ---------------------------------------------------------------------------
+//
+// `medidas_caseras` guarda las de serie —las 472 de la fase 6, con `owner_id`
+// nulo— y las de cada cuenta en la misma tabla. Desde la 0017 el dueño lo pone
+// la base con `auth.uid()`: el cliente no lo manda, y el `with check` de la
+// política impide ponerle otro.
+
+/** Añade una medida casera propia a un ingrediente, sea de quien sea. */
+export async function crearMedidaCasera(
+  ingredienteId: number,
+  nombre: string,
+  gramos: number,
+): Promise<{ error: string | null }> {
+  const limpio = nombre.trim();
+  if (!limpio) return { error: "La medida necesita un nombre: «vaso», «cazo», «unidad»…" };
+  if (!(gramos > 0)) return { error: "Los gramos tienen que ser mayores que cero." };
+
+  const supabase = await clienteServidor();
+  const { error } = await supabase
+    .from("medidas_caseras")
+    .insert({ ingrediente_id: ingredienteId, nombre: limpio, gramos });
+
+  if (error)
+    return {
+      error:
+        error.code === "23505"
+          ? `Ya tienes una medida que se llama «${limpio}» para este alimento.`
+          : error.message,
+    };
+
+  revalidatePath(`/ingredientes/${ingredienteId}`);
+  return { error: null };
+}
+
+/**
+ * Quita una medida casera **propia**.
+ *
+ * Las de serie no se pueden tocar y el RLS **no da error**: filtra. Por eso se
+ * miran las filas devueltas —si son cero, no era tuya— en vez de dar por bueno
+ * que no haya error. Es la lección de la fase 12.
+ */
+export async function borrarMedidaCasera(
+  id: string,
+  ingredienteId: number,
+): Promise<{ error: string | null }> {
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase
+    .from("medidas_caseras")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error) return { error: error.message };
+  if (!data?.length)
+    return { error: "Esa medida es de serie: se puede usar, pero no quitar." };
+
+  revalidatePath(`/ingredientes/${ingredienteId}`);
+  return { error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Borrar un ingrediente propio (fase 25)
+// ---------------------------------------------------------------------------
+
+/**
+ * Dónde está usado un ingrediente.
+ *
+ * Se pide **al pulsar «Eliminar»**, no al pintar la ficha: son cinco consultas
+ * para algo que casi nunca se hace. Y hacen falta antes de borrar porque
+ * `componentes` y `plantilla_componentes` apuntan con `on delete restrict`: sin
+ * este recuento, el único aviso sería un error de la base. Contar antes de que
+ * se pulse es el patrón de los borrados de la fase 8.
+ *
+ * Cinco consultas planas y no un anidado de tres saltos, que es lo que PostgREST
+ * escribe peor y lo que se comió la fase 21.
+ */
+export async function usosDeIngrediente(id: number): Promise<{
+  dietas: Array<{ id: string; nombre: string }>;
+  plantillas: Array<{ id: string; nombre: string }>;
+}> {
+  const supabase = await clienteServidor();
+
+  const [{ data: comps }, { data: enPlantillas }] = await Promise.all([
+    supabase.from("componentes").select("comida_id").eq("ingrediente_id", id),
+    supabase.from("plantilla_componentes").select("plantilla_id").eq("ingrediente_id", id),
+  ]);
+
+  const idsComidas = [
+    ...new Set(((comps ?? []) as Array<{ comida_id: string }>).map((c) => c.comida_id)),
+  ];
+  const idsPlantillas = [
+    ...new Set(
+      ((enPlantillas ?? []) as Array<{ plantilla_id: string }>).map((p) => p.plantilla_id),
+    ),
+  ];
+
+  const { data: comidas } = idsComidas.length
+    ? await supabase.from("comidas").select("dieta_id").in("id", idsComidas)
+    : { data: [] };
+  const idsDietas = [
+    ...new Set(((comidas ?? []) as Array<{ dieta_id: string }>).map((m) => m.dieta_id)),
+  ];
+
+  const [{ data: dietas }, { data: plantillas }] = await Promise.all([
+    idsDietas.length
+      ? supabase.from("dietas").select("id, nombre").in("id", idsDietas).order("nombre")
+      : Promise.resolve({ data: [] }),
+    idsPlantillas.length
+      ? supabase.from("plantillas").select("id, nombre").in("id", idsPlantillas).order("nombre")
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  return {
+    dietas: (dietas ?? []) as Array<{ id: string; nombre: string }>,
+    plantillas: (plantillas ?? []) as Array<{ id: string; nombre: string }>,
+  };
+}
+
+/**
+ * Borra un ingrediente **propio**.
+ *
+ * Los del catálogo compartido se pueden corregir desde la fase 12, pero no
+ * borrar: están dentro de dietas guardadas de cualquiera. El RLS ya lo impide
+ * —`ingredientes_borrar using (owner_id = auth.uid())`— y, como filtra en vez
+ * de dar error, aquí se miran las filas devueltas: cero filas es «no era tuyo»,
+ * no «hecho».
+ */
+export async function borrarIngrediente(id: number): Promise<{ error: string | null }> {
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase
+    .from("ingredientes")
+    .delete()
+    .eq("id", id)
+    .select("id");
+
+  if (error)
+    return {
+      error:
+        error.code === "23503"
+          ? "Está usado en alguna dieta o plantilla, así que no se puede borrar. " +
+            "Quítalo de ahí primero."
+          : error.message,
+    };
+  if (!data?.length)
+    return {
+      error:
+        "No se ha borrado. Los ingredientes del catálogo compartido se pueden " +
+        "corregir, pero no eliminar: están dentro de dietas ya guardadas.",
+    };
+
+  revalidatePath("/ingredientes");
+  // La ficha que se estaba mirando ya no existe: quedarse en ella daría un 404
+  // al primer refresco.
+  redirect("/ingredientes");
+}

@@ -3197,3 +3197,215 @@ button:has(> svg + span) {
   margin-top: 2px;
   font-size: 12.5px;
 }
+
+/* ==================================================== notas por dieta ==== */
+/* Fase 25. Una nota es de varias líneas: lo que se escribió en tres se lee en
+   tres, y por eso `pre-wrap` y no un párrafo normal. */
+.nota-editable {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 13.5px;
+}
+.nota-editable .texto {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--suave);
+  background: var(--panel-2);
+  border-radius: var(--r-m);
+  padding: 9px 12px;
+  max-width: 68ch;
+}
+.nota-editable .acciones {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.nota-editable textarea {
+  width: 100%;
+  max-width: 68ch;
+  min-width: 0;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.5;
+  padding: 8px 11px;
+  border: 1px solid var(--linea-fuerte);
+  border-radius: var(--r-m);
+  background: var(--panel);
+  color: var(--tinta);
+}
+.nota-editable textarea:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+/* ============================ medidas propias y borrado de ingredientes == */
+/* Fase 25. */
+.medidas li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.anadir-medida {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+.anadir-medida input {
+  min-width: 0;
+}
+
+.borrar-ingrediente[open] {
+  display: grid;
+}
+.borrar-ingrediente {
+  width: min(500px, 94vw);
+  max-height: 88dvh;
+  overflow: auto;
+  gap: 12px;
+  padding: 20px 22px 0;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-l);
+  background: var(--panel);
+  color: var(--tinta);
+  box-shadow: var(--sombra-3);
+  align-content: start;
+}
+.borrar-ingrediente::backdrop {
+  background: rgba(12, 20, 14, 0.55);
+}
+.borrar-ingrediente header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.borrar-ingrediente h3 {
+  margin: 0;
+  font-size: 16.5px;
+  flex: 1;
+}
+.borrar-ingrediente p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.borrar-ingrediente .caja-peligro {
+  display: block;
+  background: var(--peligro-suave);
+  color: var(--peligro);
+  border-radius: var(--r-m);
+  padding: 10px 13px;
+}
+.borrar-ingrediente .donde ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+}
+.borrar-ingrediente footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border-top: 1px solid var(--linea);
+  padding: 12px 0 18px;
+}
+
+/* ================================================ pantalla de plantillas = */
+/* Fase 25. */
+.lista-guardadas {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lista-guardadas > li {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--panel);
+  padding: 11px 14px;
+}
+.lista-guardadas .cabeza {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.lista-guardadas .nombre {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  font-size: 14px;
+}
+.lista-guardadas .nombre:hover {
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lista-guardadas .flecha {
+  color: var(--tenue);
+  font-size: 11px;
+}
+.lista-guardadas .cifras {
+  font-family: var(--cifras);
+  font-size: 12.5px;
+  color: var(--suave);
+}
+.lista-guardadas .acciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  font-size: 12.5px;
+}
+.lista-guardadas .notas {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--suave);
+  font-style: italic;
+}
+.lista-guardadas .dentro {
+  margin: 9px 0 0;
+  padding: 9px 0 0;
+  border-top: 1px solid var(--linea);
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  font-size: 13.5px;
+}
+.lista-guardadas .dentro li {
+  display: flex;
+  gap: 10px;
+}
+.lista-guardadas .dentro b {
+  margin-left: auto;
+}
+.lista-guardadas .editor {
+  display: grid;
+  gap: 9px;
+}
+.lista-guardadas .editor .campo {
+  display: grid;
+  gap: 4px;
+}
+.lista-guardadas .editor .campo > span {
+  font-size: 12.5px;
+  color: var(--suave);
+}
+.lista-guardadas .editor input {
+  width: 100%;
+  min-width: 0;
+  max-width: 44ch;
+}

@@ -9,6 +9,7 @@ import {
   duplicarDieta,
 } from "@/app/dietas/[id]/acciones";
 import BotonPeligroso from "./BotonPeligroso";
+import NotaEditable from "./NotaEditable";
 import { IconoAyuda, IconoCopiar, IconoPapelera } from "./Iconos";
 
 const ESTADOS = [
@@ -31,6 +32,8 @@ export default function CabeceraDieta({
   dieta: {
     id: string;
     nombre: string;
+    descripcion: string | null;
+    nota_en_hoja: boolean;
     estado_cantidades: string;
     version: number;
     dieta_padre_id: string | null;
@@ -41,6 +44,7 @@ export default function CabeceraDieta({
   const [editando, setEditando] = useState(false);
   const [nombre, setNombre] = useState(dieta.nombre);
   const [ayuda, setAyuda] = useState(false);
+  const [enHoja, setEnHoja] = useState(dieta.nota_en_hoja);
   const [pendiente, iniciar] = useTransition();
 
   function guardar() {
@@ -144,6 +148,35 @@ export default function CabeceraDieta({
           />
         </span>
       </div>
+
+      {/* La nota de la dieta, con el interruptor de si sale en el papel.
+          Una sola nota y un interruptor, y no dos cajas —una «para ti» y otra
+          «para el cliente»—: casi siempre la nota es una, y dos cajas obligan a
+          decidir dos veces. El interruptor **nace apagado**, también en las
+          dietas de antes: lo que se escribió sin saber que se iba a imprimir,
+          no se imprime. */}
+      <NotaEditable
+        valor={dieta.descripcion}
+        etiquetaVacia="añadir una nota a esta dieta"
+        marcador="2 L de agua al día. La cena, dos horas antes de dormir…"
+        onGuardar={(texto) => actualizarDieta(dieta.id, { descripcion: texto })}
+        extra={
+          <label className="fila" style={{ gap: 6, fontSize: 12.5 }}>
+            <input
+              type="checkbox"
+              checked={enHoja}
+              disabled={pendiente}
+              style={{ width: 15 }}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setEnHoja(v);
+                iniciar(() => actualizarDieta(dieta.id, { nota_en_hoja: v }));
+              }}
+            />
+            <span className="suave">sale en la hoja impresa</span>
+          </label>
+        }
+      />
 
       {ayuda && (
         <div className="ayuda">

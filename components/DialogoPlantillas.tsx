@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { borrarPlantilla, importarPlantilla } from "@/app/dietas/[id]/acciones";
+import { importarPlantilla } from "@/app/dietas/[id]/acciones";
+import { borrarPlantilla } from "@/app/plantillas/acciones";
 import BotonPeligroso from "./BotonPeligroso";
 import type { DatosPlantillas, PlantillaParaElegir } from "@/app/dietas/[id]/tipos";
 import {

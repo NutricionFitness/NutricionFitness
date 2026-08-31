@@ -41,7 +41,10 @@ export default function HojaDieta({
 }) {
   const [verKcal, setVerKcal] = useState(true);
   const [verMedidas, setVerMedidas] = useState(true);
-  const [nota, setNota] = useState("");
+  // La nota al pie viene puesta con la de la dieta cuando se ha dicho que salga
+  // en el papel, y se puede retocar para esta impresión sin tocar la dieta. Lo
+  // que se escriba aquí no se guarda: es de esta hoja.
+  const [nota, setNota] = useState(filas.nota_en_hoja ? (filas.descripcion ?? "") : "");
 
   const hayComponentes = contarComponentes(filas) > 0;
   const datos = useMemo(() => (hayComponentes ? aDieta(filas).dieta : null), [filas, hayComponentes]);

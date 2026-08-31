@@ -8,10 +8,16 @@
  *     NEXT_PUBLIC_SUPABASE_URL
  *     SUPABASE_SERVICE_ROLE_KEY     ← la clave de servicio, NUNCA la del navegador
  *
- * Es idempotente: se apoya en la restricción única (owner_id, codigo_bedca) con
- * NULLS NOT DISTINCT, así que se puede relanzar sin duplicar nada. Los
- * ingredientes del catálogo van con owner_id NULL: los ve cualquiera que haya
- * iniciado sesión.
+ * Es idempotente: la carga la hace `cargar_catalogo_bedca()` en la base, con un
+ * `on conflict (owner_id, codigo_bedca) where codigo_bedca is not null`, así que
+ * se puede relanzar sin duplicar nada. Los ingredientes del catálogo van con
+ * owner_id NULL: los ve cualquiera que haya iniciado sesión.
+ *
+ * Antes esto era un `upsert` de PostgREST. Dejó de poder serlo en la 0016: el
+ * índice único pasó a ser **parcial** —sin eso, una cuenta solo podía tener un
+ * ingrediente propio, porque los propios no llevan código de BEDCA y dos nulos
+ * chocaban— y PostgreSQL no puede inferir un índice parcial en un `on conflict`
+ * que no lleve su `where`, que PostgREST no deja escribir.
  *
  * Desde la migración 0006 el catálogo compartido SÍ se puede corregir desde la
  * app. Los ingredientes marcados con `editado_a_mano` se saltan en la carga,
@@ -79,9 +85,7 @@ async function main() {
   let hechos = 0;
   for (let i = 0; i < filas.length; i += LOTE) {
     const lote = filas.slice(i, i + LOTE);
-    const { error } = await supabase
-      .from("ingredientes")
-      .upsert(lote, { onConflict: "owner_id,codigo_bedca", ignoreDuplicates: false });
+    const { error } = await supabase.rpc("cargar_catalogo_bedca", { p_filas: lote });
     if (error) {
       console.error(`\nError en el lote que empieza en ${i}:`, error.message);
       process.exit(1);

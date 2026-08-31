@@ -73,6 +73,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
                 <>
                   <Link href="/personas">Personas</Link>
                   <Link href="/ingredientes">Ingredientes</Link>
+                  <Link href="/plantillas">Plantillas</Link>
                   <Link href="/cuenta" className="barra-correo">
                     {usuario.email}
                   </Link>

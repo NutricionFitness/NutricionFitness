@@ -85,6 +85,8 @@ export default async function PaginaDieta({ params }: { params: Promise<{ id: st
         dieta={{
           id: data.id as string,
           nombre: data.nombre as string,
+          descripcion: (data.descripcion as string | null) ?? null,
+          nota_en_hoja: Boolean(data.nota_en_hoja),
           estado_cantidades: data.estado_cantidades as string,
           version: data.version as number,
           dieta_padre_id: data.dieta_padre_id as string | null,

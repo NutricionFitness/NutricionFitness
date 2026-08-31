@@ -44,8 +44,9 @@ export async function cargarDieta(
   supabase: SupabaseClient,
   dietaId: string,
   camposIngrediente: string,
-  camposDieta = `id, owner_id, persona_id, nombre, descripcion, modelo_energia,
-     estado_cantidades, kcal_objetivo, version, dieta_padre_id, archivada, creado_en`,
+  camposDieta = `id, owner_id, persona_id, nombre, descripcion, nota_en_hoja,
+     modelo_energia, estado_cantidades, kcal_objetivo, version, dieta_padre_id,
+     archivada, creado_en`,
   extra = "",
 ): Promise<DietaCargada> {
   const seleccion = (conOpciones: boolean) => `${camposDieta}${extra ? `,\n${extra}` : ""},

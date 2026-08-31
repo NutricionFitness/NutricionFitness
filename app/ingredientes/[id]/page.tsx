@@ -37,7 +37,7 @@ export default async function Ingrediente({
          prot_100, hc_100, grasa_100, fibra_100, alcohol_100, ags_100, agua_100,
          sodio_100, kcal_ref, porcion_comestible, revisado, editado_a_mano,
          alergenos_revisados, actualizado_en,
-         medidas_caseras ( id, nombre, gramos ),
+         medidas_caseras ( id, nombre, gramos, owner_id ),
          ingrediente_alergenos ( alergeno_id )`,
       )
       .eq("id", numero)
@@ -83,8 +83,16 @@ export default async function Ingrediente({
     revisado: Boolean(data.revisado),
     editado_a_mano: Boolean(data.editado_a_mano),
     actualizado_en: data.actualizado_en as string,
-    medidas: ((data.medidas_caseras ?? []) as { id: string; nombre: string; gramos: number }[])
-      .map((m) => ({ id: m.id, nombre: m.nombre, gramos: Number(m.gramos) }))
+    medidas: ((data.medidas_caseras ?? []) as {
+      id: string; nombre: string; gramos: number; owner_id: string | null;
+    }[])
+      // Sin dueño = de serie: se usa, no se toca.
+      .map((m) => ({
+        id: m.id,
+        nombre: m.nombre,
+        gramos: Number(m.gramos),
+        propia: m.owner_id !== null,
+      }))
       .sort((a, b) => a.gramos - b.gramos),
   };
 

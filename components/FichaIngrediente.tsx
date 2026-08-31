@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import {
@@ -10,11 +11,15 @@ import {
   type Estado,
 } from "@/app/ingredientes/tipos";
 import FormularioIngrediente from "./FormularioIngrediente";
+import BorrarIngrediente from "./BorrarIngrediente";
+import MedidasCaseras from "./MedidasCaseras";
 
 export interface Medida {
   id: string;
   nombre: string;
   gramos: number;
+  /** Falso en las de serie —sin dueño—, que se usan pero no se tocan. */
+  propia: boolean;
 }
 
 export interface FichaCompleta extends DatosIngrediente {
@@ -46,6 +51,7 @@ export default function FichaIngrediente({
   /** La dieta desde la que se ha llegado, si se ha llegado desde una. */
   volver?: { href: string; nombre: string } | null;
 }) {
+  const router = useRouter();
   const [editando, setEditando] = useState(false);
 
   const kcal = kcalAtwater(ficha);
@@ -87,6 +93,15 @@ export default function FichaIngrediente({
         <span className="chip">{ficha.propio ? "tuyo" : "catálogo BEDCA"}</span>
         {ficha.editado_a_mano && !ficha.propio && (
           <span className="chip mas">corregido a mano</span>
+        )}
+
+        {/* Solo los propios se borran. Los del catálogo compartido se corrigen
+            —y el arreglo llega a todas las dietas que los usan, que es lo que
+            interesa— pero no desaparecen: están dentro de dietas guardadas. */}
+        {ficha.propio && (
+          <span style={{ marginLeft: "auto" }}>
+            <BorrarIngrediente id={ficha.id} nombre={ficha.nombre} />
+          </span>
         )}
       </div>
 
@@ -210,23 +225,11 @@ export default function FichaIngrediente({
             </table>
           </div>
 
-          <div className="tarjeta">
-            <h2 style={{ margin: "0 0 10px", fontSize: 14 }}>Medidas caseras</h2>
-            {ficha.medidas.length === 0 ? (
-              <p className="tenue" style={{ margin: 0, fontSize: 13.5 }}>
-                Ninguna. Este ingrediente se pesa.
-              </p>
-            ) : (
-              <ul className="medidas">
-                {ficha.medidas.map((m) => (
-                  <li key={m.id}>
-                    1 {m.nombre} <span className="tenue">=</span>{" "}
-                    <b className="cifra">{Math.round(Number(m.gramos))} g</b>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <MedidasCaseras
+            ingredienteId={ficha.id}
+            medidas={ficha.medidas}
+            onHecho={() => router.refresh()}
+          />
 
           {ficha.notas && (
             <div className="tarjeta">

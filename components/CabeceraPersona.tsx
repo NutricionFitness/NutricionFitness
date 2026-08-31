@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { actualizarPersona, borrarPersona } from "@/app/personas/acciones";
 import BotonPeligroso from "./BotonPeligroso";
+import NotaEditable from "./NotaEditable";
 
 export default function CabeceraPersona({
   persona,
@@ -141,6 +142,16 @@ export default function CabeceraPersona({
           onConfirmar={() => borrarPersona(persona.id)}
         />
       </div>
+
+      {/* Va debajo del nombre y no dentro de una dieta: es de la persona, y lo
+          que se apunta aquí —cómo entrena, qué no le gusta, con quién vive—
+          vale para todas sus dietas. */}
+      <NotaEditable
+        valor={persona.notas}
+        etiquetaVacia="añadir una nota sobre esta persona"
+        marcador="Entrena martes y jueves. No le gusta el pescado azul…"
+        onGuardar={(texto) => actualizarPersona(persona.id, { notas: texto })}
+      />
     </>
   );
 }

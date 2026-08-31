@@ -398,6 +398,7 @@ export async function actualizarDieta(
   cambios: Partial<{
     nombre: string;
     descripcion: string | null;
+    nota_en_hoja: boolean;
     estado_cantidades: "crudo" | "cocido" | "mixto";
     modelo_energia: "atwater" | "declarada";
     persona_id: string | null;
@@ -1130,15 +1131,6 @@ export async function importarPlantilla(datos: {
   return { opcionId, error: null };
 }
 
-/**
- * Quita una plantilla.
- *
- * No arrastra nada: una plantilla es una foto, y las opciones que salieron de
- * ella son copias que viven en sus dietas. Sus componentes se van con ella
- * (cascada).
- */
-export async function borrarPlantilla(id: string): Promise<{ error: string | null }> {
-  const supabase = await clienteServidor();
-  const { error } = await supabase.from("plantillas").delete().eq("id", id);
-  return { error: error?.message ?? null };
-}
+// `borrarPlantilla` vivía aquí y se ha mudado a `app/plantillas/acciones.ts`
+// con el resto de lo que gestiona plantillas (fase 25). Quien la usa la importa
+// de allí; dejar una copia en dos sitios es dejar que se separen.

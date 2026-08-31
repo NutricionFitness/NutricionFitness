@@ -47,6 +47,8 @@ export interface FilaDieta {
   persona_id: string | null;
   nombre: string;
   descripcion: string | null;
+  /** Si la nota de la dieta se imprime en la hoja. Apagado por defecto. */
+  nota_en_hoja: boolean;
   modelo_energia: "atwater" | "declarada";
   estado_cantidades: "crudo" | "cocido" | "mixto";
   kcal_objetivo: number | null;
