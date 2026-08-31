@@ -147,36 +147,29 @@ export default function CabeceraDieta({
             onConfirmar={() => borrarDieta(dieta.id, dieta.persona_id)}
           />
         </span>
+        <NotaEditable
+          valor={dieta.descripcion}
+          etiquetaVacia="Añadir una nota a esta dieta"
+          marcador="2 L de agua al día. La cena, dos horas antes de dormir…"
+          onGuardar={(texto) => actualizarDieta(dieta.id, { descripcion: texto })}
+          extra={
+            <label className="fila" style={{ gap: 6, fontSize: 12.5 }}>
+              <input
+                type="checkbox"
+                checked={enHoja}
+                disabled={pendiente}
+                style={{ width: 15 }}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setEnHoja(v);
+                  iniciar(() => actualizarDieta(dieta.id, { nota_en_hoja: v }));
+                }}
+              />
+              <span className="suave">Sale en la hoja impresa</span>
+            </label>
+          }
+        />
       </div>
-
-      {/* La nota de la dieta, con el interruptor de si sale en el papel.
-          Una sola nota y un interruptor, y no dos cajas —una «para ti» y otra
-          «para el cliente»—: casi siempre la nota es una, y dos cajas obligan a
-          decidir dos veces. El interruptor **nace apagado**, también en las
-          dietas de antes: lo que se escribió sin saber que se iba a imprimir,
-          no se imprime. */}
-      <NotaEditable
-        valor={dieta.descripcion}
-        etiquetaVacia="Añadir una nota a esta dieta"
-        marcador="2 L de agua al día. La cena, dos horas antes de dormir…"
-        onGuardar={(texto) => actualizarDieta(dieta.id, { descripcion: texto })}
-        extra={
-          <label className="fila" style={{ gap: 6, fontSize: 12.5 }}>
-            <input
-              type="checkbox"
-              checked={enHoja}
-              disabled={pendiente}
-              style={{ width: 15 }}
-              onChange={(e) => {
-                const v = e.target.checked;
-                setEnHoja(v);
-                iniciar(() => actualizarDieta(dieta.id, { nota_en_hoja: v }));
-              }}
-            />
-            <span className="suave">Sale en la hoja impresa</span>
-          </label>
-        }
-      />
 
       {ayuda && (
         <div className="ayuda">
