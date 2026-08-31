@@ -19,6 +19,9 @@
 :root {
   /* --- superficies y tinta --- */
   --fondo: #f6f7f4;
+  /* La foto de fondo. En claro va tal cual: es una foto pensada para esto. */
+  --foto-opacidad: 1;
+  --foto-filtro: none;
   --panel: #ffffff;
   --panel-2: #f0f2ee;
   --linea: #e1e5de;
@@ -70,6 +73,11 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
     --fondo: #0f1210;
+    /* En oscuro la foto es un cuerpo extraño: es una imagen clara alrededor de
+       una app oscura. Va apagada y desaturada, lo justo para que se adivine el
+       marco y no para mirarla. */
+    --foto-opacidad: 0.5;
+    --foto-filtro: brightness(0.4) saturate(0.65);
     --panel: #161a17;
     --panel-2: #1c211d;
     --linea: #272d28;
@@ -107,6 +115,11 @@
 
 :root[data-tema="oscuro"] {
   --fondo: #0f1210;
+  /* En oscuro la foto es un cuerpo extraño: es una imagen clara alrededor de
+     una app oscura. Va apagada y desaturada, lo justo para que se adivine el
+     marco y no para mirarla. */
+  --foto-opacidad: 0.5;
+  --foto-filtro: brightness(0.4) saturate(0.65);
   --panel: #161a17;
   --panel-2: #1c211d;
   --linea: #272d28;
@@ -147,15 +160,90 @@
   box-sizing: border-box;
 }
 
+/* El color base vive en `html`, no en `body`.
+
+   La capa de la foto es un pseudoelemento de `body` con `z-index: -1`, y el
+   orden de pintado la deja por DETRÁS del fondo de su propio elemento. Con el
+   color en `body` la capa quedaría tapada; en `html` el color va al lienzo,
+   por debajo de todo, y la foto se ve. */
+html {
+  background: var(--fondo);
+}
+
 body {
   margin: 0;
-  background: var(--fondo);
   color: var(--tinta);
   font-family: var(--texto);
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* ==================================================== el fondo de la app ==
+
+   Una sola capa, fija y por detrás de todo.
+
+   Fija, y no un `background` del `body`, por dos razones. La imagen es un
+   MARCO —los cuencos, las hojas y la cinta métrica están en los bordes y el
+   centro es crema—, y un marco tiene que quedarse quieto mientras el
+   contenido pasa por delante. Y `background-attachment: fixed` sobre el
+   fondo que se propaga al lienzo lo ignora Safari en iOS, que es donde se
+   usa el escáner.
+
+   `cover` y centrada: en un móvil estrecho se recorta a los lados y queda
+   solo la franja central, que es justo la parte lisa. Se pierde la
+   decoración, pero nunca se parte un cuenco por la mitad.
+
+   Los paneles siguen siendo OPACOS. Aquí se leen gramos y kilocalorías en
+   columna; una foto por debajo de un número no se negocia. La imagen se ve
+   en los márgenes, entre paneles y a través de la barra superior, que ya era
+   translúcida desde la fase 3.
+   ========================================================================= */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image: url("/fondo.webp");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--foto-opacidad);
+  filter: var(--foto-filtro);
+}
+
+/* El velo: la foto se ve ALREDEDOR del contenido, nunca por debajo.
+
+   No es una preferencia, es aritmética. `--tenue` (#7c8a81) da 3,36:1 sobre
+   `--fondo`, y su techo sobre blanco puro es 3,61:1: cualquier cosa que
+   oscurezca el fondo por debajo de un texto tenue lo empeora, y no hay velo
+   translúcido que lo arregle. Medido antes de escribir esto: con la foto
+   entera, el `h1` de una página caía encima de la hoja de monstera a 1280 px
+   y se quedaba en 1,79:1. Ilegible.
+
+   Así que el contenido lleva su propia lámina de `--fondo`, opaca, con los
+   bordes difuminados para que no parezca una losa pegada encima. Va atada a
+   la caja de `main`, no a un porcentaje de la ventana: crece con la página,
+   y en una pantalla ancha —o en una página corta, como el login— deja ver
+   mucha foto sin tocar una sola medida del contenido.
+
+   El desenfoque llega a opacidad plena justo en el borde de `main`, y el
+   texto empieza 20 px más adentro por el `padding`. Ese margen es el que
+   garantiza que ningún texto se apoye en la foto. */
+main {
+  position: relative;
+}
+main::before {
+  content: "";
+  position: absolute;
+  inset: -28px -22px;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--fondo);
+  filter: blur(14px);
 }
 
 a {
@@ -2177,6 +2265,19 @@ button:has(> svg + span) {
   main {
     padding: 0;
     max-width: none;
+  }
+  /* El papel del cliente es blanco. Sin esto pasarían tres cosas: la capa fija
+     saldría en el PDF y repetida en cada página; el velo pintaría un
+     rectángulo del color del tema por detrás de la hoja —y si el usuario tiene
+     el tema oscuro puesto, ese rectángulo es casi negro—; y el lienzo llevaría
+     ese mismo color. Chrome imprime los fondos cuando está marcado «gráficos
+     de fondo», así que no basta con confiar en que no salgan. */
+  html {
+    background: #fff;
+  }
+  body::before,
+  main::before {
+    display: none !important;
   }
 }
 
