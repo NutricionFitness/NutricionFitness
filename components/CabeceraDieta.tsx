@@ -173,7 +173,7 @@ export default function CabeceraDieta({
                 iniciar(() => actualizarDieta(dieta.id, { nota_en_hoja: v }));
               }}
             />
-            <span className="suave">sale en la hoja impresa</span>
+            <span className="suave">Sale en la hoja impresa</span>
           </label>
         }
       />

@@ -87,7 +87,7 @@ export default function NotaEditable({
           <p className="texto">{valor}</p>
           <span className="acciones">
             <button className="enlace" onClick={() => setEditando(true)}>
-              editar nota
+              Editar nota
             </button>
             {extra}
           </span>
