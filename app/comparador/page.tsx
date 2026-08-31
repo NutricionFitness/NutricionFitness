@@ -35,7 +35,7 @@ export default function PaginaComparador() {
       <footer className="pie-publico">
         <p>
           Composición de alimentos de la <strong>Base de Datos Española de
-          Composición de Alimentos (BEDCA)</strong>, de la Agencia Española de
+            Composición de Alimentos (BEDCA)</strong>, de la Agencia Española de
           Seguridad Alimentaria y Nutrición. Los valores son por 100 g de
           porción comestible. La energía se calcula con los factores de Atwater
           (4 kcal/g de proteína e hidratos, 9 de grasa, 7 de alcohol); la fibra
@@ -46,7 +46,7 @@ export default function PaginaComparador() {
           decide qué come una persona es un profesional que la conoce.
         </p>
         <p>
-          <Link href="/login">Entrar</Link>
+          Volver a la página <Link href="/login">Entrar</Link>
         </p>
       </footer>
     </>
