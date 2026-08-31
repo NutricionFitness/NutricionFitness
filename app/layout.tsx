@@ -39,29 +39,17 @@ export default async function Layout({ children }: { children: React.ReactNode }
       <body>
         <header className="barra">
           <div>
-            <Link href={usuario ? "/personas" : "/comparador"} className="marca">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect
-                  x="1.6"
-                  y="1.6"
-                  width="20.8"
-                  height="20.8"
-                  rx="6"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                />
-                <path
-                  d="M6.6 15.4c3.1 0 4.9-1.4 5.7-3.1.9-2 .6-4.1.6-4.1s-2.2-.3-4 .6c-1.8.8-3.1 2.5-3.1 5.6"
-                  fill="currentColor"
-                  opacity=".9"
-                />
-                <path
-                  d="M6 18c1.5-3.4 3.9-5.5 7.4-6.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+            <Link
+              href={usuario ? "/personas" : "/comparador"}
+              className="marca"
+              aria-label="App Nutrición"
+            >
+              {/* El logo va como <img> y no por `next/image`: mide 24 px fijos, nunca
+                  se redimensiona y no hay nada que optimizar. El nombre accesible
+                  del enlace lo pone el `aria-label` de arriba y no este `alt`,
+                  porque por debajo de 480 px `.marca-nombre` se esconde y el
+                  enlace se quedaría sin nombre. */}
+              <img src="/logo.png" alt="" width={24} height={24} />
               <span className="marca-nombre">App Nutrición</span>
             </Link>
 

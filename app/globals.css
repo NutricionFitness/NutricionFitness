@@ -230,20 +230,26 @@ body::before {
    y en una pantalla ancha —o en una página corta, como el login— deja ver
    mucha foto sin tocar una sola medida del contenido.
 
-   El desenfoque llega a opacidad plena justo en el borde de `main`, y el
-   texto empieza 20 px más adentro por el `padding`. Ese margen es el que
-   garantiza que ningún texto se apoye en la foto. */
+   El borde difuso se hace con `box-shadow` y NO con `filter: blur()`, y esa
+   es la parte que importa: una sombra es tinta, no maquetación, así que se
+   sale de la caja sin empujar nada. La primera versión llevaba desenfoque y
+   un `inset` negativo de 22 px, y eso **desplazaba la página entera a lo
+   ancho** en cuanto la ventana bajaba de ~1225 px —22 px medidos en un
+   móvil—. Con la sombra, el núcleo opaco cubre exactamente la caja de `main`
+   —o sea que el texto, que empieza en su `padding`, se apoya siempre en
+   `--fondo` puro— y el halo se difumina hacia fuera sin existir para la
+   maquetación. */
 main {
   position: relative;
 }
 main::before {
   content: "";
   position: absolute;
-  inset: -28px -22px;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   background: var(--fondo);
-  filter: blur(14px);
+  box-shadow: 0 0 26px 20px var(--fondo);
 }
 
 a {
@@ -321,6 +327,9 @@ header.barra > div {
 .marca {
   display: inline-flex;
   align-items: center;
+  /* No encoge: lo que cede sitio cuando la barra no cabe es la tira de
+     enlaces, que ya se desplaza sola. */
+  flex: none;
   gap: 9px;
   font-weight: 650;
   letter-spacing: -0.02em;
@@ -328,18 +337,37 @@ header.barra > div {
   text-decoration: none;
   white-space: nowrap;
 }
-.marca svg {
-  width: 21px;
-  height: 21px;
+/* El logo es una imagen, no el glifo de línea que había antes: ni hereda
+   `color` ni se le puede cambiar el tono desde aquí. 24 px y no 21 porque
+   tiene más detalle dentro —cuenco, manzana, hojas— y a 21 se empasta; se
+   comprobó que a 24 la barra no crece, porque la altura la marcan los
+   enlaces de navegación. */
+.marca img {
+  width: 24px;
+  height: 24px;
   flex: none;
-  color: var(--acento);
 }
+/* La barra no empuja la página.
+   Con seis enlaces —«Plantillas» es el sexto, de la fase 25— la barra no cabe
+   en un móvil, y lo que se desplazaba a lo ancho era la PÁGINA entera: medido,
+   83 px a 390 px de ancho, y también a 430, 560 y 760. Es el fallo de las
+   tablas de la fase 10 y se arregla igual: que se desplace la tira, nunca la
+   página.
+   `min-width: 0` porque un elemento de flex no encoge por debajo de su
+   contenido sin él, y sin encoger no hay nada que contener. La barra de
+   desplazamiento se esconde: son 33 px de alto y se comería la mitad. */
 header.barra nav {
   display: flex;
   align-items: center;
   gap: 4px;
   margin-left: auto;
   font-size: 14px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+header.barra nav::-webkit-scrollbar {
+  display: none;
 }
 header.barra nav a {
   color: var(--suave);
