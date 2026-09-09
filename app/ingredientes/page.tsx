@@ -123,8 +123,12 @@ export default async function Ingredientes({
         </Link>
       </div>
       <p className="sub">
-        Catálogo de BEDCA más los tuyos. De BEDCA se muestran los preferentes: un
-        registro por nombre, el más completo de los que ofrece la fuente.{" "}
+        Alimentos genéricos de BEDCA, productos envasados de Open Food Facts y
+        los tuyos. De BEDCA se muestran los preferentes: un registro por nombre,
+        el más completo de los que ofrece la fuente. Los de Open Food Facts los
+        ha tecleado gente a partir de la etiqueta y{" "}
+        <strong>nadie los ha revisado</strong>; sustituir y planificar sigue
+        usando solo los genéricos.{" "}
         <strong>Todos los valores son por 100 g de porción comestible.</strong>{" "}
         Pincha en un ingrediente para ver su ficha entera.
       </p>

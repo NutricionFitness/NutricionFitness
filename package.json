@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "cargar-ingredientes": "node scripts/cargar-ingredientes.mjs",
     "cargar-medidas": "node scripts/cargar-medidas.mjs",
-    "probar-codigo": "vite-node scripts/probar-codigo.ts"
+    "probar-codigo": "vite-node scripts/probar-codigo.ts",
+    "cargar-off": "vite-node scripts/cargar-off.ts",
+    "mirar-off": "vite-node scripts/mirar-off.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

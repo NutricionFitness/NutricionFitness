@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  filtrosDePreseleccion,
   rankearPorMacro,
   rankearSustitutos,
   type Candidato,
@@ -101,9 +102,37 @@ export async function sustitutosPublicos(datos: {
   const vacio: PaginaSustitutos = { sustitutos: [], total: 0, mirados: 0 };
   if (!(datos.gramos > 0) || !(datos.alimento.kcal100 > 0)) return vacio;
 
+  const yo: Candidato = {
+    id: datos.alimento.id,
+    nombre: datos.alimento.nombre,
+    grupo: datos.alimento.grupo,
+    estado: datos.alimento.estado,
+    prot: datos.alimento.prot,
+    hc: datos.alimento.hc,
+    grasa: datos.alimento.grasa,
+    kcal100: datos.alimento.kcal100,
+  };
+
+  // La banda de cantidad se aprieta a la mitad y el doble, en vez del cuarto y
+  // el cuádruple que usa el panel de dentro de una dieta. Ahí la pregunta es
+  // «no tengo esto, ¿qué pongo?» y una cantidad rara puede valer; aquí la
+  // pregunta es «¿por qué lo cambio?», y la respuesta tiene que ser una ración
+  // parecida. Medido contra el catálogo: con la banda ancha, «arroz con más
+  // proteína» contestaba **297 g de ajo**; con ésta, sémola y cereales, y «pan
+  // con más proteína» contesta guisante, judías y lentejas.
+  const opciones = { limite: 500, minRelativo: 0.5, maxRelativo: 2 };
+  const direccion = datos.orden === "parecido" ? undefined : DIRECCIONES[datos.orden];
+
   const supabase = await clienteServidor();
+  // Desde el volcado de Open Food Facts el catálogo público son 150.000 filas y
+  // no 1.090: traérselo entero para puntuarlo aquí son megabytes por consulta.
+  // La base **preselecciona** con los filtros que este mismo módulo describe
+  // —`filtrosDePreseleccion`—, y el orden lo sigue decidiendo el dominio con lo
+  // que llegue. No hay una segunda fórmula: hay una prueba que exige que las
+  // dos den exactamente lo mismo.
   const { data, error } = await supabase.rpc("candidatos_publicos", {
     grupo_filtro: datos.soloMismoGrupo ? datos.alimento.grupo : null,
+    preseleccion: filtrosDePreseleccion(yo, datos.gramos, opciones, direccion),
   });
   if (error || !data) return vacio;
 
@@ -121,33 +150,12 @@ export async function sustitutosPublicos(datos: {
     kcal100: num(f.kcal_100),
   }));
 
-  const yo: Candidato = {
-    id: datos.alimento.id,
-    nombre: datos.alimento.nombre,
-    grupo: datos.alimento.grupo,
-    estado: datos.alimento.estado,
-    prot: datos.alimento.prot,
-    hc: datos.alimento.hc,
-    grasa: datos.alimento.grasa,
-    kcal100: datos.alimento.kcal100,
-  };
-
-  // Se pide todo y se corta aquí: `limite` alto, no «diez». Así se puede decir
-  // cuántos hay en total, que es lo que hace honesto el botón de «buscar más»
-  // —y lo que permite apagarlo cuando ya no queda nada—.
-  //
-  // Y la banda de cantidad se aprieta a la mitad y el doble, en vez del cuarto
-  // y el cuádruple que usa el panel de dentro de una dieta. Ahí la pregunta es
-  // «no tengo esto, ¿qué pongo?» y una cantidad rara puede valer; aquí la
-  // pregunta es «¿por qué lo cambio?», y la respuesta tiene que ser una ración
-  // parecida. Medido contra el catálogo: con la banda ancha, «arroz con más
-  // proteína» contestaba **297 g de ajo**; con ésta, sémola y cereales, y «pan
-  // con más proteína» contesta guisante, judías y lentejas.
-  const opciones = { limite: 500, minRelativo: 0.5, maxRelativo: 2 };
-  const todos =
-    datos.orden === "parecido"
-      ? rankearSustitutos(yo, datos.gramos, candidatos, opciones)
-      : rankearPorMacro(yo, datos.gramos, candidatos, DIRECCIONES[datos.orden], opciones);
+  // Se corta aquí: `limite` alto, no «diez». Así se puede decir cuántos hay en
+  // total, que es lo que hace honesto el botón de «buscar más» —y lo que
+  // permite apagarlo cuando ya no queda nada—.
+  const todos = direccion
+    ? rankearPorMacro(yo, datos.gramos, candidatos, direccion, opciones)
+    : rankearSustitutos(yo, datos.gramos, candidatos, opciones);
 
   const desde = Math.max(0, datos.desde ?? 0);
   return {

@@ -1,0 +1,68 @@
+# Refresco mensual del volcado de Open Food Facts.
+#
+# Corre `scripts/cargar-off.ts` con el CSV entero, cargando solo los productos
+# que hayan cambiado desde la última pasada buena.
+#
+# ## Por qué aquí y no dentro de Supabase
+#
+# El primer diseño lo ponía en una Edge Function con `pg_cron`, leyendo los
+# ficheros delta diarios de Open Food Facts. No sirve: **los delta no traen la
+# tabla nutricional** (medido: 0 de 7.209 fichas con `proteins_100g`). La única
+# fuente que sí la trae es el CSV, y son 1,2 GB y 4,5 millones de filas: eso no
+# entra en los 150 segundos de reloj y 2 de CPU de una Edge Function.
+#
+# Aquí no hay límite que estorbe, y no depende de que ningún ordenador esté
+# encendido. El porqué completo está en `claude/volcado-off.md`.
+#
+# ## Los secretos
+#
+# En Settings → Secrets and variables → Actions del repositorio:
+#
+#   NEXT_PUBLIC_SUPABASE_URL     la URL del proyecto
+#   SUPABASE_SERVICE_ROLE_KEY    la clave de servicio
+#   OPENFOODFACTS_CONTACTO       tu correo; su servidor pide identificarse
+#
+# La clave de servicio se salta el RLS entero: si el repositorio es público, no
+# la pongas aquí y usa el Programador de tareas de tu Windows.
+
+name: Refrescar Open Food Facts
+
+on:
+  schedule:
+    # Día 1 de cada mes a las 04:00 UTC. GitHub retrasa los `schedule` cuando
+    # hay cola, así que la hora es orientativa; da igual, esto no corre contra
+    # reloj.
+    - cron: "0 4 1 * *"
+  # Y a mano, desde la pestaña Actions, que es como se prueba la primera vez.
+  workflow_dispatch:
+
+jobs:
+  refrescar:
+    runs-on: ubuntu-latest
+    # Descargar 1,2 GB y recorrer 4,5 millones de filas: con margen de sobra.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # `npm ci` y no `npm install`: la pasada tiene que usar exactamente las
+      # versiones del `package-lock.json`, no las que hubiera hoy.
+      - run: npm ci
+
+      # `--desde ultimo` lee la marca de agua de `cargas_off`, así que si un mes
+      # no corre, el siguiente recoge los dos. No se usa «hace treinta días»
+      # justamente por eso.
+      - name: Cargar lo que haya cambiado
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENFOODFACTS_CONTACTO: ${{ secrets.OPENFOODFACTS_CONTACTO }}
+        run: npm run cargar-off -- --desde ultimo
+
+      # El informe queda en el log de la acción, y los números en `cargas_off`.
+      # Para ver si esto está vivo: `select * from v_refresco_off;`

@@ -42,5 +42,10 @@ export interface PaginaSustitutos {
   /** Cuántos hay en total con estos filtros, para saber si queda más. */
   total: number;
   /** Cuántos candidatos se han mirado. Da la medida de lo que hay detrás. */
+  /**
+   * Cuántos candidatos se han puntuado. Desde el volcado de Open Food Facts no
+   * es «cuántos hay en el catálogo»: la base preselecciona y esto cuenta lo
+   * preseleccionado. No se enseña en ninguna pantalla.
+   */
   mirados: number;
 }

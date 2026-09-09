@@ -333,3 +333,54 @@ export function rankearHaciaObjetivo(
   out.sort((a, b) => (b.mejora ?? 0) - (a.mejora ?? 0));
   return out.slice(0, opciones.limite ?? POR_DEFECTO.limite);
 }
+
+/**
+ * Los filtros de este módulo, en forma de datos.
+ *
+ * Existe por el volcado de Open Food Facts (fase 27). Mientras el catálogo
+ * fueron 1.090 alimentos, el comparador público se los traía enteros y los
+ * puntuaba aquí; con 150.000 productos dentro, traérselos todos son megabytes
+ * por consulta, así que la base tiene que **preseleccionar**.
+ *
+ * Preseleccionar no es puntuar: el orden que se enseña lo sigue decidiendo
+ * `rankearSustitutos` con lo que llegue. Lo único que la consulta necesita
+ * saber es qué candidatos este módulo **descarta** —la banda de gramos, el tope
+ * absoluto, los grupos que no se cruzan y, en modo dirigido, el movimiento
+ * mínimo del macro—, porque si preseleccionara sin ellos podría dejar fuera
+ * algo que aquí sí se habría enseñado.
+ *
+ * Esos cuatro filtros se describen aquí y no se vuelven a escribir en SQL: los
+ * números (0,25 y 4 dentro de una dieta, 0,5 y 2 en el comparador, los 500 g,
+ * los tres grupos, los 5 puntos) viven en este fichero y salen de él como
+ * datos. Hay una prueba que exige que la preselección de la base y este módulo
+ * devuelvan exactamente lo mismo.
+ */
+export function filtrosDePreseleccion(
+  actual: Candidato,
+  gramos: number,
+  opciones: OpcionesSustitucion = {},
+  direccion?: Direccion,
+) {
+  const pre: Record<string, unknown> = {
+    kcal: actual.kcal100,
+    gramos,
+    prot: actual.prot,
+    hc: actual.hc,
+    grasa: actual.grasa,
+    grupo: actual.grupo,
+    minRelativo: opciones.minRelativo ?? POR_DEFECTO.minRelativo,
+    maxRelativo: opciones.maxRelativo ?? POR_DEFECTO.maxRelativo,
+    maxGramos: opciones.maxGramosAbsoluto ?? POR_DEFECTO.maxGramosAbsoluto,
+    gruposExcluidos: opciones.gruposExcluidosAlCruzar ?? POR_DEFECTO.gruposExcluidosAlCruzar,
+  };
+  if (direccion && actual.kcal100 > 0) {
+    pre.macro = {
+      col: direccion.macro,
+      factor: FACTOR[direccion.macro],
+      signo: direccion.sentido === "mas" ? 1 : -1,
+      partida: (100 * FACTOR[direccion.macro] * actual[direccion.macro]) / actual.kcal100,
+      minimo: MOVIMIENTO_MINIMO,
+    };
+  }
+  return pre;
+}

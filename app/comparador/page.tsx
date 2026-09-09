@@ -7,7 +7,8 @@ export const metadata: Metadata = {
   title: "Comparador de alimentos",
   description:
     "Compara alimentos a igualdad de kilocalorías: qué macronutrientes aporta " +
-    "cada uno y por cuál se puede cambiar. Datos de BEDCA (AESAN).",
+    "cada uno y por cuál se puede cambiar. Datos de BEDCA (AESAN) y de Open " +
+    "Food Facts (ODbL).",
 };
 
 /**
@@ -34,12 +35,32 @@ export default function PaginaComparador() {
 
       <footer className="pie-publico">
         <p>
-          Composición de alimentos de la <strong>Base de Datos Española de
-            Composición de Alimentos (BEDCA)</strong>, de la Agencia Española de
-          Seguridad Alimentaria y Nutrición. Los valores son por 100 g de
-          porción comestible. La energía se calcula con los factores de Atwater
-          (4 kcal/g de proteína e hidratos, 9 de grasa, 7 de alcohol); la fibra
-          no aporta energía en este cálculo.
+          Composición de alimentos genéricos de la <strong>Base de Datos
+            Española de Composición de Alimentos (BEDCA)</strong>, de la Agencia
+          Española de Seguridad Alimentaria y Nutrición. Los valores son por
+          100 g de porción comestible. La energía se calcula con los factores de
+          Atwater (4 kcal/g de proteína e hidratos, 9 de grasa, 7 de alcohol);
+          la fibra no aporta energía en este cálculo.
+        </p>
+        {/*
+          Atribución de la ODbL. No es un adorno: publicar aquí los productos de
+          Open Food Facts es **redistribuir** su base, y la licencia obliga a
+          decir de dónde salen y a que lo que se derive de ellos siga siendo
+          abierto. Usarlos dentro de la app, sin publicarlos, no obligaba a
+          nada; desde que salen en esta página, sí.
+        */}
+        <p>
+          Los productos envasados —los que llevan marca— vienen de{" "}
+          <a href="https://es.openfoodfacts.org" rel="noreferrer">
+            Open Food Facts
+          </a>
+          , bajo licencia{" "}
+          <a href="https://opendatacommons.org/licenses/odbl/1-0/" rel="noreferrer">
+            ODbL
+          </a>
+          . Los rellena gente a partir de la etiqueta del envase y{" "}
+          <strong>nadie los ha revisado</strong>: pueden estar mal. Los de BEDCA
+          no llevan marca.
         </p>
         <p>
           Esto es una herramienta de cálculo, no un consejo dietético: quien

@@ -144,45 +144,27 @@ export async function asignarAlergenoAFiltro(
 ) {
   const supabase = await clienteServidor();
 
-  let consulta = supabase
-    .from("ingredientes")
-    .select("id")
-    .eq("preferente", true)
-    .limit(5000);
-
+  // El filtro se resuelve y se marca en la **misma** sentencia, en la base
+  // (`asignar_alergeno_a_filtro`, migración 0018). Antes se traían los ids con
+  // `limit(5000)` y luego se insertaban: con 1.090 filas ese tope no se
+  // alcanzaba nunca, pero desde el volcado de Open Food Facts un filtro puede
+  // sacar decenas de miles y la pantalla habría dicho «hecho» habiendo marcado
+  // los primeros 5.000. Un alérgeno marcado a medias es peor que no marcado:
+  // el aviso rojo de la dieta se calla justo donde no debe.
   const norm = filtro.q
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .trim();
-  if (norm) consulta = consulta.ilike("nombre_norm", `%${norm}%`);
-  if (filtro.grupos.length) consulta = consulta.in("grupo", filtro.grupos);
 
-  const { data, error: errBuscar } = await consulta;
-  if (errBuscar) throw new Error(errBuscar.message);
-
-  const ids = (data ?? []).map((f) => Number(f.id));
-  if (!ids.length) return 0;
-
-  if (quitar) {
-    const { error } = await supabase
-      .from("ingrediente_alergenos")
-      .delete()
-      .eq("alergeno_id", alergenoId)
-      .in("ingrediente_id", ids);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase.from("ingrediente_alergenos").upsert(
-      ids.map((ingrediente_id) => ({
-        ingrediente_id,
-        alergeno_id: alergenoId,
-        origen: "manual",
-      })),
-      { onConflict: "ingrediente_id,alergeno_id", ignoreDuplicates: true },
-    );
-    if (error) throw new Error(error.message);
-  }
+  const { data, error } = await supabase.rpc("asignar_alergeno_a_filtro", {
+    p_texto: norm || null,
+    p_grupos: filtro.grupos.length ? filtro.grupos : null,
+    p_alergeno: alergenoId,
+    p_quitar: quitar,
+  });
+  if (error) throw new Error(error.message);
 
   revalidatePath("/ingredientes");
-  return ids.length;
+  return Number(data ?? 0);
 }

@@ -6,25 +6,24 @@ import { clienteServidor } from "@/lib/supabase/servidor";
  * Se leen de los datos y no de una lista escrita a mano: si mañana aparece uno
  * nuevo en BEDCA, o lo estrenas tú al crear un ingrediente, sale solo.
  *
- * PostgREST no sabe hacer `distinct`, así que se traen los grupos de todas las
- * filas y se resumen aquí. Son quince valores distintos sobre mil y pico filas
- * de una sola columna de texto: sale más barato que montar una vista. El `limit`
- * alto está para que un tope de filas del servidor no deje fuera el último grupo
- * por orden alfabético.
+ * Hasta la fase 27 esto se traía la columna `grupo` de **todas** las filas y las
+ * resumía aquí, con un `limit(5000)` de red: PostgREST no sabe hacer `distinct`,
+ * y quince valores sobre mil y pico filas de una sola columna salía más barato
+ * que montar nada. Con el volcado de Open Food Facts dentro son 150.000 filas, y
+ * ese `limit` deja de ser una red y pasa a **recortar**: los grupos deducidos de
+ * las primeras 5.000 filas de 150.000 pueden no ser todos, y el desplegable
+ * perdería opciones sin decirlo.
+ *
+ * `distinct` es lo que PostgREST no sabe hacer, no lo que PostgreSQL no sabe
+ * hacer. La función `grupos_catalogo()` de la migración 0018 lo hace en la base.
  */
 export async function gruposDisponibles(): Promise<string[]> {
   const supabase = await clienteServidor();
-  const { data } = await supabase
-    .from("ingredientes")
-    .select("grupo")
-    .eq("preferente", true)
-    .limit(5000);
+  const { data, error } = await supabase.rpc("grupos_catalogo");
+  if (error) return [];
 
-  return [
-    ...new Set(
-      (data ?? [])
-        .map((f) => (f.grupo as string | null) ?? "")
-        .filter((g): g is string => g !== ""),
-    ),
-  ].sort((a, b) => a.localeCompare(b, "es"));
+  return ((data ?? []) as { grupo: string }[])
+    .map((f) => f.grupo)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "es"));
 }

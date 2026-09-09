@@ -189,6 +189,13 @@ export async function buscarSustitutos(datos: {
     .select("id, nombre, grupo, estado, prot_100, hc_100, grasa_100, kcal_100")
     .eq("preferente", true)
     .gt("kcal_100", 0)
+    // Sustituir es cosa de alimentos genéricos: cambiar el arroz por «Galletas
+    // María 3.412 (Alteza)» es correcto y no es la respuesta de nadie. Y sobre
+    // todo, `limit(1200)` era «el catálogo entero» mientras el catálogo fueron
+    // 1.090 filas; desde el volcado de Open Food Facts (fase 27) son 150.000, y
+    // sin este filtro las 1.200 pasarían a ser un trozo arbitrario **sin dar
+    // error**. Es el fallo de la fase 16 otra vez: un tope que era «todo».
+    .neq("fuente", "openfoodfacts")
     .neq("id", datos.ingredienteId)
     .limit(1200);
   if (datos.soloMismoGrupo && datos.grupo) consulta = consulta.eq("grupo", datos.grupo);
@@ -276,6 +283,9 @@ export async function buscarPlanDeCambios(datos: {
       .select(COLUMNAS_CANDIDATO)
       .eq("preferente", true)
       .gt("kcal_100", 0)
+      // Ver `buscarSustitutos`: el volcado de Open Food Facts no entra en el
+      // motor, y sin esto el `limit(1200)` dejaría de ser «todo el catálogo».
+      .neq("fuente", "openfoodfacts")
       .limit(1200),
     supabase.from("ingredientes").select(COLUMNAS_CANDIDATO).in("id", idsEnUso),
     alergenos.length
