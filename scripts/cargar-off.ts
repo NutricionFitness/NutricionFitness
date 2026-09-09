@@ -188,6 +188,7 @@ async function main() {
     sinEnergia: 0,
     fueraDeRango: 0,
     viejos: 0,
+    sinFecha: 0,
     aceptados: 0,
     escritos: 0,
     alergenos: 0,
@@ -270,7 +271,19 @@ async function main() {
     if (!arg.todosLosPaises && !f.paises.includes(arg.pais)) continue;
     cuenta.delPais++;
 
-    if (desdeT !== null && (f.modificado ?? 0) < desdeT) {
+    // Solo se salta lo que se SABE que es viejo.
+    //
+    // Estaba escrito `(f.modificado ?? 0) < desdeT`, que trata «no tiene fecha»
+    // como «es de 1970» y por tanto lo descarta. Una ficha del CSV sin
+    // `last_modified_t` habría quedado **fuera de todas las recargas
+    // incrementales para siempre**, sin aparecer en ningún recuento: entraría
+    // en la carga completa, se quedaría congelada, y nadie lo notaría. Es el
+    // fallo de la fase 16 con otra cara —un filtro que descarta en silencio— y
+    // lo destapó ver que la marca de agua salía en mayo y no en septiembre.
+    //
+    // Ahora, sin fecha se procesa. Cuesta trabajo de más y nunca datos de menos,
+    // que es el lado por el que hay que equivocarse.
+    if (desdeT !== null && f.modificado !== null && f.modificado < desdeT) {
       cuenta.viejos++;
       continue;
     }
@@ -328,6 +341,7 @@ async function main() {
     // La marca de agua sale de lo que ENTRA, no de lo que se lee: así una
     // pasada que descarte mucho no adelanta el reloj más de la cuenta.
     if (f.modificado && f.modificado > hastaT) hastaT = f.modificado;
+    else if (!f.modificado) cuenta.sinFecha++;
     if (muestra.length < 5)
       muestra.push(
         `   ${prop.nombre} — ${Math.round(kcal)} kcal/100 g · ` +
@@ -376,6 +390,11 @@ async function main() {
   console.log(`  sin energía        ${n(cuenta.sinEnergia)}`);
   console.log(`  fuera de rango     ${n(cuenta.fueraDeRango)}`);
   console.log(`ACEPTADOS            ${n(cuenta.aceptados)}`);
+  if (cuenta.sinFecha)
+    console.log(
+      `  de ellos, ${n(cuenta.sinFecha)} sin last_modified_t: no cuentan para la marca de\n` +
+      `  agua y se vuelven a procesar en cada recarga, que es lo seguro.`,
+    );
   if (!arg.seco) {
     console.log(`Escritos             ${n(cuenta.escritos)}`);
     console.log(`Alérgenos marcados   ${n(cuenta.alergenos)}`);
