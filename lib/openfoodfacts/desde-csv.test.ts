@@ -7,6 +7,7 @@ import {
   filaAProducto,
   fueraDeRango,
   indiceDeCabecera,
+  pareceCodigoDeBarras,
 } from "./desde-csv";
 
 /**
@@ -257,5 +258,28 @@ describe("fueraDeRango", () => {
 
   it("un NaN no se cuela", () => {
     expect(fueraDeRango({ ...bueno, prot_100: NaN })).toMatch(/proteína/);
+  });
+});
+
+describe("pareceCodigoDeBarras", () => {
+  it("caza el código pelado y el código con marca", () => {
+    expect(pareceCodigoDeBarras("8412345678905")).toBe(true);
+    expect(pareceCodigoDeBarras("8412345678905 (Hacendado)")).toBe(true);
+    expect(pareceCodigoDeBarras("84 123456 78905")).toBe(true);
+    expect(pareceCodigoDeBarras("8-412345-678905")).toBe(true);
+  });
+
+  it("y NO se lleva por delante los nombres que son números de verdad", () => {
+    expect(pareceCodigoDeBarras("7 Up")).toBe(false);
+    expect(pareceCodigoDeBarras("100 Montaditos")).toBe(false);
+    expect(pareceCodigoDeBarras("3 quesos (Buitoni)")).toBe(false);
+    expect(pareceCodigoDeBarras("Yogur natural")).toBe(false);
+    expect(pareceCodigoDeBarras("70% cacao")).toBe(false);
+  });
+
+  it("un número corto no es un código", () => {
+    // Seis dígitos o menos se dejan pasar: hay nombres legítimos así.
+    expect(pareceCodigoDeBarras("123456")).toBe(false);
+    expect(pareceCodigoDeBarras("1234567")).toBe(true);
   });
 });

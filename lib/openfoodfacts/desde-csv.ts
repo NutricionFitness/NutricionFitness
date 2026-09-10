@@ -244,3 +244,24 @@ export function fueraDeRango(p: {
 
   return null;
 }
+
+/**
+ * ¿El «nombre» de esta ficha es en realidad su código de barras?
+ *
+ * En Open Food Facts hay miles de fichas donde alguien rellenó el nombre del
+ * producto con los dígitos del código. No vienen vacías —el conversor las
+ * dejaría pasar y el cargador solo descarta las que no tienen nada—, así que
+ * entran, y en el catálogo aparece «8412345678905» como si fuera un alimento.
+ * Salieron 2.364 en la primera carga real.
+ *
+ * Se compara sin el «(Marca)» que le añade `nombreDelProducto`, porque
+ * «8412345678905 (Hacendado)» es el mismo caso. Y se acepta que lleve espacios,
+ * puntos o guiones en medio, que es como se teclean los códigos a mano.
+ *
+ * El umbral son siete dígitos: por debajo hay nombres legítimos que son
+ * números —«7 Up», «100 Montaditos»— y no conviene tirarlos.
+ */
+export function pareceCodigoDeBarras(nombre: string): boolean {
+  const sinMarca = nombre.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return /^[0-9][0-9\s.\-]{6,}$/.test(sinMarca);
+}

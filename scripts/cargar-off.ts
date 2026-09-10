@@ -58,6 +58,7 @@ import {
   filaAProducto,
   fueraDeRango,
   indiceDeCabecera,
+  pareceCodigoDeBarras,
 } from "../lib/openfoodfacts/desde-csv";
 import { normalizarEan } from "../lib/openfoodfacts/ean";
 import { normalizarNombre } from "../app/ingredientes/tipos";
@@ -189,6 +190,8 @@ async function main() {
     fueraDeRango: 0,
     viejos: 0,
     sinFecha: 0,
+    nombreEsCodigo: 0,
+    nombreRescatado: 0,
     aceptados: 0,
     escritos: 0,
     alergenos: 0,
@@ -316,7 +319,32 @@ async function main() {
       cuenta.descalificados++;
       continue;
     }
-    if (!nombreDelProducto(f.producto).trim()) {
+    /**
+     * Un nombre vacío se descarta; uno que es el código, también, pero antes se
+     * intenta recuperar.
+     *
+     * En Open Food Facts hay miles de fichas donde alguien rellenó el nombre
+     * con los dígitos del código. No vienen vacías, así que el filtro de arriba
+     * no las veía y entraban: 2.364 en la primera carga real, apareciendo en el
+     * catálogo como «8412345678905». Antes de tirarlas se prueba con
+     * `generic_name`, que muchas veces sí trae algo («Galletas de avena»), y
+     * para eso se vuelve a componer el nombre con el `product_name` vaciado:
+     * así la cadena de `nombreDelProducto` cae al siguiente campo ella sola, en
+     * vez de que este fichero repita esa lógica.
+     */
+    let nombre = nombreDelProducto(f.producto).trim();
+    if (nombre && pareceCodigoDeBarras(nombre)) {
+      const rescatado = nombreDelProducto({ ...f.producto, product_name: "" }).trim();
+      nombre = rescatado && !pareceCodigoDeBarras(rescatado) ? rescatado : "";
+      if (nombre) {
+        cuenta.nombreRescatado++;
+        prop.nombre = nombre;
+      } else {
+        cuenta.nombreEsCodigo++;
+        continue;
+      }
+    }
+    if (!nombre) {
       cuenta.sinNombre++;
       continue;
     }
@@ -387,9 +415,12 @@ async function main() {
   console.log(`  código no válido   ${n(cuenta.sinCodigo)}`);
   console.log(`  ficha imposible    ${n(cuenta.descalificados)}`);
   console.log(`  sin nombre         ${n(cuenta.sinNombre)}`);
+  console.log(`  el nombre es el código ${n(cuenta.nombreEsCodigo)}`);
   console.log(`  sin energía        ${n(cuenta.sinEnergia)}`);
   console.log(`  fuera de rango     ${n(cuenta.fueraDeRango)}`);
   console.log(`ACEPTADOS            ${n(cuenta.aceptados)}`);
+  if (cuenta.nombreRescatado)
+    console.log(`  de ellos, ${n(cuenta.nombreRescatado)} con el nombre rescatado de generic_name`);
   if (cuenta.sinFecha)
     console.log(
       `  de ellos, ${n(cuenta.sinFecha)} sin last_modified_t: no cuentan para la marca de\n` +
