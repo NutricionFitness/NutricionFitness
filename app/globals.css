@@ -2938,6 +2938,10 @@ button:has(> svg + span) {
   margin-top: 12px;
   font-size: 12.5px;
 }
+.comparador .nota-sustitutos {
+  margin: -4px 0 12px;
+  font-size: 12.5px;
+}
 
 /* La tabla de los dos, cara a cara: la primera columna es la etiqueta de la
    fila, así que va en negrita y sin alinear a la derecha. */

@@ -22,6 +22,13 @@ import type { AlimentoPublico, Orden, PaginaSustitutos } from "./tipos";
  * El cálculo lo hace `lib/dominio/sustituir`, el mismo que dentro de una dieta.
  * No hay una segunda implementación «para la página pública»: si un día se
  * afina el filtro de los sustitutos, se afina en los dos sitios a la vez.
+ *
+ * Y los candidatos son los mismos que dentro de una dieta: **genéricos**. El
+ * volcado de Open Food Facts se busca por nombre —`buscar_alimentos_publico`,
+ * para compararse contra un producto concreto— pero no se propone como
+ * sustituto: `candidatos_publicos` lo deja fuera desde la 0020, igual que
+ * `buscarSustitutos` en `app/dietas/[id]/acciones.ts` con su
+ * `neq("fuente", "openfoodfacts")`. El porqué está en esa migración.
  */
 
 type FilaBusqueda = {
@@ -129,7 +136,8 @@ export async function sustitutosPublicos(datos: {
   // La base **preselecciona** con los filtros que este mismo módulo describe
   // —`filtrosDePreseleccion`—, y el orden lo sigue decidiendo el dominio con lo
   // que llegue. No hay una segunda fórmula: hay una prueba que exige que las
-  // dos den exactamente lo mismo.
+  // dos den exactamente lo mismo. (Desde la 0020 el volcado ya no es candidato
+  // y vuelven a ser ~1.100 filas; la preselección se queda, que no estorba.)
   const { data, error } = await supabase.rpc("candidatos_publicos", {
     grupo_filtro: datos.soloMismoGrupo ? datos.alimento.grupo : null,
     preseleccion: filtrosDePreseleccion(yo, datos.gramos, opciones, direccion),

@@ -11,10 +11,16 @@ import { gramosIsoenergeticos, type Sustitucion } from "@/lib/dominio/sustituir"
  *
  * Contesta dos preguntas, y son distintas:
  *
- *  1. «¿Por qué puedo cambiar esto?» — se puntúa el catálogo entero y salen los
- *     diez que mejor encajan, con «buscar más» si esos diez no valen.
+ *  1. «¿Por qué puedo cambiar esto?» — se puntúan los genéricos —BEDCA y los
+ *     propios publicados— y salen los diez que mejor encajan, con «buscar más»
+ *     si esos diez no valen. Los productos de marca del volcado de Open Food
+ *     Facts no entran aquí (migración 0020): una ficha con cifras de relleno
+ *     proporcionales al alimento de partida da distancia cero y se ponía la
+ *     primera, y con 150.000 sin revisar siempre había diez así.
  *  2. «¿Y esto contra aquello?» — se elige el segundo a mano y sale la tabla de
  *     los dos, con los gramos del segundo cuadrados a las mismas kilocalorías.
+ *     Aquí sí entra todo: compararse contra el yogur que uno compra es justo
+ *     para lo que sirve el volcado.
  *
  * Las dos están a la vez en la pantalla: una lista de propuestas no quita las
  * ganas de comparar contra algo concreto que ya se tiene en la cabeza.
@@ -351,6 +357,15 @@ function Sustitutos({ alimento, gramos }: { alimento: AlimentoPublico; gramos: n
           </label>
         </div>
       </div>
+
+      {/* Que se sepa por qué un producto de marca no aparece aquí y sí abajo:
+          sin esta línea, quien busque «su» yogur en la lista pensará que el
+          buscador está roto. */}
+      <p className="tenue nota-sustitutos">
+        Se proponen solo alimentos genéricos. Los productos de marca no se
+        proponen como sustitutos —nadie ha revisado sus cifras—, pero puedes
+        compararlos abajo, uno a uno.
+      </p>
 
       {!lista.length && cargando ? (
         <p className="suave">Buscando…</p>
