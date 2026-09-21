@@ -12,9 +12,10 @@ import { NextResponse, type NextRequest } from "next/server";
 // puede hacer desde ahí lo limitan las tres funciones de la migración 0009, no
 // esta lista: la página en sí no lee ni escribe nada por su cuenta.
 //
-// `/comparador` es lo mismo con la 0011: una página de cálculo abierta a
-// cualquiera, que no toca ninguna tabla y solo llama a dos funciones que
-// devuelven catálogo público y nada más. Que una ruta esté en esta lista NUNCA
+// `/comparador` es lo mismo con la 0011, la 0021 y la 0022: una página de
+// cálculo abierta a cualquiera, que no toca ninguna tabla y solo llama a
+// funciones que devuelven catálogo público —o mueven un vínculo de escaneo
+// sin dueño— y nada más. Que una ruta esté en esta lista NUNCA
 // es lo que la hace segura; lo que la hace segura es que no pueda pedir nada
 // que no deba.
 const PUBLICAS = ["/login", "/auth", "/escanear", "/comparador"];

@@ -16,8 +16,8 @@ export const metadata: Metadata = {
  *
  * Es la única página de la app a la que llega alguien que no ha entrado —junto
  * con la del escaneo remoto—, así que no toca ninguna tabla: todo pasa por las
- * dos funciones públicas de la migración 0011 y la de la 0021 (buscar por
- * código de barras).
+ * dos funciones públicas de la migración 0011, la de la 0021 (buscar por
+ * código de barras) y las de la 0022 (escanear con el móvil sin sesión).
  */
 export default function PaginaComparador() {
   return (

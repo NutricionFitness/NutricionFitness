@@ -2855,10 +2855,17 @@ button:has(> svg + span) {
   align-items: center;
   gap: 4px 10px;
 }
-/* El aviso del escaneo ocupa su propia fila: como hijo del `.paso` flexible,
-   sin esto se pondría al lado del botón y empujaría la cantidad fuera. */
-.comparador .mensaje-codigo {
+/* El aviso del escaneo y el panel del QR ocupan su propia fila, y la última:
+   como hijos del `.paso` flexible, sin `flex-basis: 100%` se pondrían al lado
+   del botón, y sin `order` la cantidad se iría debajo de ellos. El panel va
+   envuelto porque `.panel-remoto` tiene tope de ancho y con él solo no llena
+   la fila. */
+.comparador .mensaje-codigo,
+.comparador .paso > .fila-panel {
   flex-basis: 100%;
+  order: 10;
+}
+.comparador .mensaje-codigo {
   margin: 0;
   font-size: 13px;
 }

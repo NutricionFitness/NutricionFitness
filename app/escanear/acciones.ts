@@ -9,6 +9,19 @@ import { clienteServidor } from "@/lib/supabase/servidor";
  *
  * El móvil no pasa por aquí: entra por las funciones de la migración 0009, que
  * son lo único que puede tocar alguien sin sesión iniciada.
+ *
+ * Hay dos juegos de tres acciones, y hacen lo mismo:
+ *
+ *   · `abrirSesionEscaneo` / `novedadesEscaneo` / `cerrarSesionEscaneo` — con
+ *     sesión, contra las tablas y bajo el RLS de la 0009. Es lo de siempre.
+ *   · Las mismas con `Anonima`/`Anonimo` — sin sesión, para el comparador
+ *     público, contra las tres funciones `security definer` de la 0022. La
+ *     sesión que abren no es de nadie y solo se llega a ella con el token.
+ *
+ * Son dos juegos y no uno que mire si hay usuario a propósito: mirarlo cuesta
+ * una consulta a Auth en cada sondeo —cada dos segundos—, y sobre todo, el
+ * comparador no tiene por qué tocar una tabla ni aunque quien lo abra haya
+ * entrado. Quien monta el panel sabe en qué página está y elige.
  */
 
 /** Cuánto vale un enlace. Lo justo para ir a por el móvil y escanear un rato. */
@@ -117,4 +130,63 @@ export async function novedadesEscaneo(
 export async function cerrarSesionEscaneo(token: string) {
   const supabase = await clienteServidor();
   await supabase.from("sesiones_escaneo").delete().eq("token", token);
+}
+
+// ------------------------------------------------------------- sin sesión --
+
+/**
+ * Abre un vínculo sin dueño. Mismo token —144 bits del sistema—, misma
+ * caducidad; lo que cambia es que lo guarda la función de la 0022 en vez de
+ * un `insert` que `anon` no puede hacer.
+ */
+export async function abrirSesionEscaneoAnonima(): Promise<SesionEscaneo> {
+  const supabase = await clienteServidor();
+  const token = randomBytes(18).toString("hex");
+
+  const { data, error } = await supabase.rpc("abrir_escaneo_anonimo", { p_token: token });
+  if (error || !data) throw new Error(error?.message ?? "No se ha podido abrir el vínculo.");
+
+  return { token, expira_en: String(data) };
+}
+
+/** Lo que devuelve `novedades_escaneo_anonimo`. */
+type NovedadesAnonimas = {
+  existe: boolean;
+  vinculada?: boolean;
+  escribir_a_mano?: boolean;
+  terminada?: boolean;
+  codigo?: { id: number; codigo: string } | null;
+};
+
+/**
+ * Qué hay de nuevo en una sesión sin dueño. La misma forma de respuesta que
+ * `novedadesEscaneo`, para que el panel no distinga.
+ */
+export async function novedadesEscaneoAnonimo(
+  token: string,
+  desde: number,
+): Promise<NovedadesEscaneo> {
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase.rpc("novedades_escaneo_anonimo", {
+    p_token: token,
+    p_desde: desde,
+  });
+  const n = data as NovedadesAnonimas | null;
+
+  if (error || !n || !n.existe)
+    return { codigos: [], ultimo: desde, vinculada: false, escribirAMano: false, terminada: true };
+
+  return {
+    codigos: n.codigo ? [n.codigo.codigo] : [],
+    ultimo: n.codigo ? Number(n.codigo.id) : desde,
+    vinculada: Boolean(n.vinculada),
+    escribirAMano: Boolean(n.escribir_a_mano),
+    terminada: Boolean(n.terminada),
+  };
+}
+
+/** El ordenador sin sesión termina. Solo borra sesiones sin dueño. */
+export async function cerrarSesionEscaneoAnonima(token: string) {
+  const supabase = await clienteServidor();
+  await supabase.rpc("cerrar_escaneo_anonimo", { p_token: token });
 }

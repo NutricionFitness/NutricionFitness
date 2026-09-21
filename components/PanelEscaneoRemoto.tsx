@@ -4,8 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   abrirSesionEscaneo,
+  abrirSesionEscaneoAnonima,
   cerrarSesionEscaneo,
+  cerrarSesionEscaneoAnonima,
   novedadesEscaneo,
+  novedadesEscaneoAnonimo,
 } from "@/app/escanear/acciones";
 import CodigoQR from "./CodigoQR";
 
@@ -22,10 +25,33 @@ import CodigoQR from "./CodigoQR";
  * Se consulta cada dos segundos. No es tiempo real, y es una decisión: el
  * tiempo real de Supabase habría que configurarlo y probarlo contra el proyecto
  * de verdad, y esto son dos consultas diminutas mientras dura el vínculo.
+ *
+ * **Dos modos, un solo panel.** Con `modo="publico"` —el comparador, sin
+ * sesión— el vínculo se abre, se sondea y se cierra por las funciones de la
+ * 0022 en vez de por las tablas; todo lo demás, el QR, el móvil, la cola, es
+ * idéntico. Las claves de `sessionStorage` van por modo para que un vínculo
+ * con dueño no se intente retomar desde el comparador, que no lo vería.
  */
 
-const CLAVE_TOKEN = "escaneo.token";
-const CLAVE_ULTIMO = "escaneo.ultimo";
+export type ModoPanel = "sesion" | "publico";
+
+const ACCIONES = {
+  sesion: {
+    abrir: abrirSesionEscaneo,
+    novedades: novedadesEscaneo,
+    cerrar: cerrarSesionEscaneo,
+  },
+  publico: {
+    abrir: abrirSesionEscaneoAnonima,
+    novedades: novedadesEscaneoAnonimo,
+    cerrar: cerrarSesionEscaneoAnonima,
+  },
+} as const;
+
+const claves = (modo: ModoPanel) => ({
+  token: modo === "publico" ? "escaneo.publico.token" : "escaneo.token",
+  ultimo: modo === "publico" ? "escaneo.publico.ultimo" : "escaneo.ultimo",
+});
 
 /** `sessionStorage` lanza en ventanas privadas de algunos navegadores. */
 const recordar = (clave: string, valor: string | null) => {
@@ -48,13 +74,19 @@ export default function PanelEscaneoRemoto({
   onCodigo,
   onEscribirAMano,
   onCerrar,
+  modo = "sesion",
 }: {
   /** Un código que ha leído el móvil. Puede llamarse varias veces. */
   onCodigo: (codigo: string) => void;
   /** El móvil ha pedido teclearlo aquí. */
   onEscribirAMano: () => void;
   onCerrar: () => void;
+  /** `publico` en el comparador, que no tiene sesión. */
+  modo?: ModoPanel;
 }) {
+  const acciones = ACCIONES[modo];
+  const { token: CLAVE_TOKEN, ultimo: CLAVE_ULTIMO } = claves(modo);
+
   const [token, setToken] = useState<string | null>(null);
   const [vinculada, setVinculada] = useState(false);
   const [verQR, setVerQR] = useState(true);
@@ -69,7 +101,7 @@ export default function PanelEscaneoRemoto({
   const olvidar = useCallback(() => {
     recordar(CLAVE_TOKEN, null);
     recordar(CLAVE_ULTIMO, null);
-  }, []);
+  }, [CLAVE_TOKEN, CLAVE_ULTIMO]);
 
   // --- abrir el vínculo, o retomar el que hubiera ---------------------------
   useEffect(() => {
@@ -85,7 +117,8 @@ export default function PanelEscaneoRemoto({
       return;
     }
 
-    abrirSesionEscaneo()
+    acciones
+      .abrir()
       .then((s) => {
         if (!vivo.current) return;
         ultimo.current = 0;
@@ -98,6 +131,8 @@ export default function PanelEscaneoRemoto({
     return () => {
       vivo.current = false;
     };
+    // El modo no cambia con el panel montado: se fija al montarlo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- sondear ---------------------------------------------------------------
@@ -108,7 +143,7 @@ export default function PanelEscaneoRemoto({
     const mirar = async () => {
       let n;
       try {
-        n = await novedadesEscaneo(token, ultimo.current);
+        n = await acciones.novedades(token, ultimo.current);
       } catch {
         return; // un fallo suelto de red no tira el vínculo
       }
@@ -144,10 +179,12 @@ export default function PanelEscaneoRemoto({
       vivo.current = false;
       clearInterval(t);
     };
+    // `acciones` y las claves salen de `modo`, que es fijo mientras vive el panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, olvidar]);
 
   function terminar() {
-    if (token) void cerrarSesionEscaneo(token);
+    if (token) void acciones.cerrar(token);
     olvidar();
     onCerrar();
   }
