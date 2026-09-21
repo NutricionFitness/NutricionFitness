@@ -6,6 +6,7 @@
  */
 
 import type { Sustitucion } from "@/lib/dominio/sustituir";
+import type { Aviso } from "@/lib/openfoodfacts/convertir";
 
 /** Un alimento tal y como sale del catálogo público. */
 export interface AlimentoPublico {
@@ -49,3 +50,40 @@ export interface PaginaSustitutos {
    */
   mirados: number;
 }
+
+// ------------------------------------------------------- código de barras ---
+
+/**
+ * Lo que hay que decir de un alimento que ha llegado por código de barras.
+ *
+ * Va aparte de `AlimentoPublico` y no dentro porque no es un dato del
+ * alimento: es de dónde ha salido **esta vez**. El mismo yogur buscado por
+ * nombre no lleva nada de esto, y la ficha lo enseña solo cuando lo hay.
+ */
+export interface Escaneo {
+  /** El código tal cual se ha leído o tecleado, ya comprobado. */
+  codigo: string;
+  /**
+   * De dónde salen las cifras:
+   *   · `volcado`: del volcado de Open Food Facts que está en el catálogo.
+   *     Nadie las ha revisado.
+   *   · `propio`: de una cuenta de la app que publica su catálogo. Alguien las
+   *     miró al darlas de alta.
+   *   · `en_vivo`: no estaba en el catálogo y se ha preguntado ahora mismo a
+   *     Open Food Facts. Tampoco las ha revisado nadie, y además no se guardan.
+   */
+  origen: "volcado" | "propio" | "en_vivo";
+  /** Lo que el conversor tiene que avisar. Solo en vivo; el volcado entró sin ellos. */
+  avisos: Aviso[];
+}
+
+/** El resultado de pasar un código de barras por `alimentoPorCodigo`. */
+export type ResultadoCodigoPublico =
+  /** El código no es un GTIN válido: dígito de control o longitud. */
+  | { estado: "codigo_invalido" }
+  /** Hay ficha, en el catálogo o en vivo. */
+  | { estado: "encontrado"; alimento: AlimentoPublico; escaneo: Escaneo }
+  /** Ni en el catálogo ni en Open Food Facts. */
+  | { estado: "no_encontrado"; codigo: string }
+  /** No estaba en el catálogo y no se ha podido preguntar fuera. */
+  | { estado: "sin_respuesta"; codigo: string; motivo: string };

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { buscarPorCodigoBarras } from "@/app/ingredientes/escanear";
-import type { AvisoEscaneo, PropuestaEscaneo } from "@/app/ingredientes/tipos";
+import type { PropuestaEscaneo } from "@/app/ingredientes/tipos";
 import { colaDeCodigos, type ColaCodigos, type EstadoCola } from "@/lib/cola-codigos";
 import EscanerCodigoBarras from "./EscanerCodigoBarras";
 import PanelEscaneoRemoto from "./PanelEscaneoRemoto";
@@ -231,34 +231,5 @@ function ElegirCamara({
         Cancelar
       </button>
     </dialog>
-  );
-}
-
-/**
- * Lo que el conversor tiene que decir sobre la ficha que acaba de traer.
- *
- * Va en ámbar y no en rojo a propósito: el rojo de esta app es de las alergias
- * y de los borrados, y gastarlo aquí le quitaría fuerza allí. Los avisos graves
- * se distinguen por el texto en negrita, no por otro color.
- */
-export function AvisosEscaneo({ avisos }: { avisos: AvisoEscaneo[] }) {
-  if (!avisos.length) return null;
-
-  const graves = avisos.filter((a) => a.gravedad === "alto");
-  return (
-    <div className="aviso-caja avisos-escaneo">
-      <div>
-        <strong>
-          {graves.length ? "Revisa esto antes de guardar" : "Un par de cosas de esta ficha"}
-        </strong>
-        <ul>
-          {avisos.map((a) => (
-            <li key={a.clave} className={a.gravedad === "alto" ? "grave" : undefined}>
-              {a.texto}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   );
 }

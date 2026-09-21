@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   title: "Comparador de alimentos",
   description:
     "Compara alimentos a igualdad de kilocalorías: qué macronutrientes aporta " +
-    "cada uno y por cuál se puede cambiar. Datos de BEDCA (AESAN) y de Open " +
-    "Food Facts (ODbL).",
+    "cada uno y por cuál se puede cambiar. Por nombre o escaneando el código " +
+    "de barras. Datos de BEDCA (AESAN) y de Open Food Facts (ODbL).",
 };
 
 /**
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
  *
  * Es la única página de la app a la que llega alguien que no ha entrado —junto
  * con la del escaneo remoto—, así que no toca ninguna tabla: todo pasa por las
- * dos funciones públicas de la migración 0011.
+ * dos funciones públicas de la migración 0011 y la de la 0021 (buscar por
+ * código de barras).
  */
 export default function PaginaComparador() {
   return (
@@ -24,10 +25,11 @@ export default function PaginaComparador() {
       <header className="cabecera-publica">
         <h1>Comparador de alimentos</h1>
         <p>
-          Elige un alimento y una cantidad. Te dice lo que aporta y por qué lo
-          puedes cambiar <strong>sin mover las kilocalorías</strong>: las
-          cantidades que se proponen son las que aportan la misma energía, así
-          que lo único que cambia es el reparto de macronutrientes.
+          Elige un alimento —o escanea el código de barras de un producto— y
+          una cantidad. Te dice lo que aporta y por qué lo puedes cambiar{" "}
+          <strong>sin mover las kilocalorías</strong>: las cantidades que se
+          proponen son las que aportan la misma energía, así que lo único que
+          cambia es el reparto de macronutrientes.
         </p>
       </header>
 

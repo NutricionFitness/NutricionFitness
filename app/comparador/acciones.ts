@@ -7,17 +7,26 @@ import {
   type Candidato,
   type Direccion,
 } from "@/lib/dominio/sustituir";
-import { normalizarNombre } from "@/app/ingredientes/tipos";
+import { kcalAtwater, normalizarNombre } from "@/app/ingredientes/tipos";
+import { consultarOpenFoodFacts } from "@/lib/openfoodfacts/consultar";
+import { convertir } from "@/lib/openfoodfacts/convertir";
+import { normalizarEan } from "@/lib/openfoodfacts/ean";
 import { clienteServidor } from "@/lib/supabase/servidor";
-import type { AlimentoPublico, Orden, PaginaSustitutos } from "./tipos";
+import type {
+  AlimentoPublico,
+  Orden,
+  PaginaSustitutos,
+  ResultadoCodigoPublico,
+} from "./tipos";
 
 /**
  * Lo que el comparador público puede pedirle a la base.
  *
- * Dos llamadas y ninguna tabla: `buscar_alimentos_publico` y
+ * Tres llamadas y ninguna tabla: `buscar_alimentos_publico` y
  * `candidatos_publicos` son funciones `SECURITY DEFINER` de la migración 0011,
- * y son la superficie completa de lo que puede hacer alguien sin sesión. El
- * porqué está escrito en esa migración; aquí solo se llaman.
+ * y `alimento_publico_por_codigo` de la 0021. Son la superficie completa de lo
+ * que puede hacer alguien sin sesión. El porqué está escrito en esas
+ * migraciones; aquí solo se llaman.
  *
  * El cálculo lo hace `lib/dominio/sustituir`, el mismo que dentro de una dieta.
  * No hay una segunda implementación «para la página pública»: si un día se
@@ -79,6 +88,78 @@ export async function buscarAlimentos(texto: string): Promise<AlimentoPublico[]>
   });
   if (error || !data) return [];
   return (data as FilaBusqueda[]).map(aAlimento);
+}
+
+/**
+ * Busca un alimento por su código de barras.
+ *
+ * Primero en el catálogo público —el volcado de Open Food Facts y lo propio
+ * publicado ya llevan el código— y solo si no está, en Open Food Facts en
+ * vivo. Es el mismo orden que el alta con sesión (`app/ingredientes/escanear`)
+ * y por el mismo motivo: lo que ya está en la base no tiene por qué salir a
+ * internet.
+ *
+ * Lo que llega en vivo **no se guarda**: aquí no hay sesión ni catálogo donde
+ * guardarlo. Se convierte con el mismo conversor que el alta, se enseña con
+ * sus avisos, y en cuanto se cambia de alimento desaparece. Por eso lleva
+ * `id: 0`: no es una fila de la base y ningún candidato puede coincidir con él.
+ *
+ * Y los sustitutos no cambian: `sustitutosPublicos` puntúa contra
+ * `candidatos_publicos`, que solo devuelve genéricos (0020). Escanear un
+ * producto de marca enseña su ficha; lo que se propone para cambiarlo sigue
+ * saliendo de BEDCA y de lo propio publicado.
+ */
+export async function alimentoPorCodigo(bruto: string): Promise<ResultadoCodigoPublico> {
+  const ean = normalizarEan(bruto ?? "");
+  if (!ean) return { estado: "codigo_invalido" };
+
+  // ------------------------------------------- 1. ¿está en el catálogo público?
+  const supabase = await clienteServidor();
+  const { data } = await supabase.rpc("alimento_publico_por_codigo", {
+    codigos: ean.consultas,
+  });
+  // Un error aquí —la 0021 sin aplicar, la base caída— no es motivo para no
+  // contestar: se pregunta fuera, que es lo que se haría con un código nuevo.
+  const fila = (data as Array<FilaBusqueda & { codigo_barras: string; fuente: string }> | null)?.[0];
+  if (fila)
+    return {
+      estado: "encontrado",
+      alimento: aAlimento(fila),
+      escaneo: {
+        codigo: ean.codigo,
+        origen: fila.fuente === "openfoodfacts" ? "volcado" : "propio",
+        avisos: [],
+      },
+    };
+
+  // ------------------------------------------------- 2. preguntar fuera
+  const r = await consultarOpenFoodFacts(ean.consultas);
+  if (r.estado === "sin_respuesta")
+    return { estado: "sin_respuesta", codigo: ean.codigo, motivo: r.motivo };
+  if (r.estado === "no_encontrado") return { estado: "no_encontrado", codigo: ean.codigo };
+
+  const p = convertir(r.producto, ean.codigo);
+  return {
+    estado: "encontrado",
+    alimento: {
+      id: 0,
+      nombre: p.nombre || `Producto ${ean.codigo}`,
+      grupo: p.grupo,
+      estado: p.estado,
+      prot: p.prot_100,
+      hc: p.hc_100,
+      grasa: p.grasa_100,
+      fibra: p.fibra_100,
+      alcohol: p.alcohol_100,
+      // La misma fórmula que la columna generada de la base: si se guardara,
+      // saldría este número.
+      kcal100: kcalAtwater(p),
+      kcalRef: p.kcal_ref,
+      porcionComestible: null,
+      codigoBedca: null,
+    },
+    escaneo: { codigo: ean.codigo, origen: "en_vivo", avisos: p.avisos },
+  };
 }
 
 const DIRECCIONES: Record<Exclude<Orden, "parecido">, Direccion> = {

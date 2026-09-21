@@ -12,7 +12,7 @@ import {
   type DatosIngrediente,
   type Estado,
 } from "@/app/ingredientes/tipos";
-import { AvisosEscaneo } from "./AltaPorCodigo";
+import AvisosEscaneo from "./AvisosEscaneo";
 import SelectorGrupoUnico from "./SelectorGrupoUnico";
 
 /**

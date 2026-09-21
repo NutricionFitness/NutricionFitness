@@ -3,8 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { buscarAlimentos, sustitutosPublicos } from "@/app/comparador/acciones";
-import type { AlimentoPublico, Orden, PaginaSustitutos } from "@/app/comparador/tipos";
+import type { AlimentoPublico, Escaneo, Orden, PaginaSustitutos } from "@/app/comparador/tipos";
 import { gramosIsoenergeticos, type Sustitucion } from "@/lib/dominio/sustituir";
+import AvisosEscaneo from "./AvisosEscaneo";
+import CodigoBarrasPublico from "./CodigoBarrasPublico";
 
 /**
  * El comparador público.
@@ -25,9 +27,16 @@ import { gramosIsoenergeticos, type Sustitucion } from "@/lib/dominio/sustituir"
  * Las dos están a la vez en la pantalla: una lista de propuestas no quita las
  * ganas de comparar contra algo concreto que ya se tiene en la cabeza.
  *
+ * Y a cada hueco se llega de dos maneras: por nombre o por código de barras
+ * —la cámara o los dígitos—. Por código, lo que llega puede venir del catálogo
+ * o de Open Food Facts en vivo, y la ficha dice cuál de las dos y con qué
+ * avisos: eso es `Escaneo`, que viaja al lado del alimento y se borra en
+ * cuanto se elige otro por nombre.
+ *
  * Todo lo que se calcula aquí —las dos fichas y la tabla comparativa— es
  * aritmética sobre datos que ya están en el navegador. Al servidor solo se va a
- * buscar por nombre y a puntuar el catálogo, que es lo que no cabe aquí.
+ * buscar —por nombre o por código— y a puntuar el catálogo, que es lo que no
+ * cabe aquí.
  */
 
 const MACROS = [
@@ -67,8 +76,23 @@ function aporte(a: AlimentoPublico, gramos: number) {
 
 export default function Comparador() {
   const [alimento, setAlimento] = useState<AlimentoPublico | null>(null);
+  const [escaneo, setEscaneo] = useState<Escaneo | null>(null);
   const [gramos, setGramos] = useState("100");
   const [otro, setOtro] = useState<AlimentoPublico | null>(null);
+  const [escaneoOtro, setEscaneoOtro] = useState<Escaneo | null>(null);
+
+  // El alimento y su escaneo van siempre juntos: por nombre, sin escaneo.
+  // Cambiar el primero quita el segundo, que era una pregunta sobre el otro.
+  const elegir = (a: AlimentoPublico, e: Escaneo | null = null) => {
+    setAlimento(a);
+    setEscaneo(e);
+    setOtro(null);
+    setEscaneoOtro(null);
+  };
+  const elegirOtro = (a: AlimentoPublico | null, e: Escaneo | null = null) => {
+    setOtro(a);
+    setEscaneoOtro(a ? e : null);
+  };
 
   const g = Number(String(gramos).replace(",", "."));
   const gValidos = Number.isFinite(g) && g > 0 && g <= 2000;
@@ -76,14 +100,8 @@ export default function Comparador() {
   return (
     <div className="comparador">
       <section className="paso">
-        <BuscadorPublico
-          etiqueta="Alimento"
-          valor={alimento}
-          onElegir={(a) => {
-            setAlimento(a);
-            setOtro(null);
-          }}
-        />
+        <BuscadorPublico etiqueta="Alimento" valor={alimento} onElegir={(a) => elegir(a)} />
+        <CodigoBarrasPublico onAlimento={elegir} />
 
         <label className="campo-gramos">
           <span className="etiqueta">Cantidad</span>
@@ -105,17 +123,42 @@ export default function Comparador() {
 
       {alimento && gValidos && (
         <>
-          <Ficha alimento={alimento} gramos={g} />
-          {/* Con `key`: cambiar de alimento o de cantidad es otra pregunta, y
-              lo que se quiere es empezar de cero. Remontar hace eso sin un
-              efecto que reinicie estado, que es de donde salen las carreras. */}
-          <Sustitutos key={`${alimento.id}-${g}`} alimento={alimento} gramos={g} />
-          <Contra
-            alimento={alimento}
-            gramos={g}
-            otro={otro}
-            onElegir={setOtro}
-          />
+          <Ficha alimento={alimento} gramos={g} escaneo={escaneo} />
+          {alimento.kcal100 <= 0 ? (
+            // Solo puede pasar con algo que llega en vivo: el catálogo
+            // público no publica filas sin energía. Sin kilocalorías no hay
+            // «misma energía» y las dos preguntas de abajo no tienen sentido.
+            <p className="aviso">
+              La ficha de {alimento.nombre} no trae composición, así que no hay nada que
+              comparar ni por qué cambiarlo. Prueba a buscarlo por su nombre: puede que el
+              catálogo tenga otra ficha del mismo producto.
+            </p>
+          ) : (
+            <>
+              {/* Con `key`: cambiar de alimento o de cantidad es otra pregunta,
+                  y lo que se quiere es empezar de cero. Remontar hace eso sin
+                  un efecto que reinicie estado, que es de donde salen las
+                  carreras. El código va en la clave porque lo que llega en
+                  vivo no tiene id de la base: dos productos escaneados
+                  seguidos serían el mismo `0`. */}
+              <Sustitutos
+                key={`${alimento.id}-${escaneo?.codigo ?? ""}-${g}`}
+                alimento={alimento}
+                gramos={g}
+              />
+              {/* Remontado al cambiar el primero —no la cantidad—, para que un
+                  aviso de escaneo del segundo hueco no sobreviva a otro
+                  alimento. */}
+              <Contra
+                key={`${alimento.id}-${escaneo?.codigo ?? ""}`}
+                alimento={alimento}
+                gramos={g}
+                otro={otro}
+                escaneo={escaneoOtro}
+                onElegir={elegirOtro}
+              />
+            </>
+          )}
         </>
       )}
     </div>
@@ -221,7 +264,15 @@ function BuscadorPublico({
 }
 
 /** Lo que aporta la cantidad elegida. */
-function Ficha({ alimento, gramos }: { alimento: AlimentoPublico; gramos: number }) {
+function Ficha({
+  alimento,
+  gramos,
+  escaneo,
+}: {
+  alimento: AlimentoPublico;
+  gramos: number;
+  escaneo: Escaneo | null;
+}) {
   const a = aporte(alimento, gramos);
   return (
     <section className="ficha-alimento">
@@ -234,6 +285,8 @@ function Ficha({ alimento, gramos }: { alimento: AlimentoPublico; gramos: number
           )}
         </span>
       </div>
+
+      {escaneo && <Procedencia escaneo={escaneo} />}
 
       <div className="cifras-ficha">
         <div className="grande">
@@ -273,6 +326,33 @@ function Ficha({ alimento, gramos }: { alimento: AlimentoPublico; gramos: number
         {alimento.kcalRef !== null && ` · ${n0(alimento.kcalRef)} kcal declaradas`}
       </p>
     </section>
+  );
+}
+
+/**
+ * De dónde ha salido lo que llegó por código de barras, y sus avisos.
+ *
+ * En una página abierta la procedencia no es letra pequeña: un producto del
+ * volcado y uno consultado ahora mismo parecen iguales en la ficha y no lo son
+ * —el segundo ni siquiera se guarda—, y ninguno de los dos lo ha mirado nadie.
+ */
+function Procedencia({ escaneo }: { escaneo: Escaneo }) {
+  const graves = escaneo.avisos.some((a) => a.gravedad === "alto");
+  return (
+    <>
+      <p className="tenue procedencia">
+        Código de barras <b>{escaneo.codigo}</b> ·{" "}
+        {escaneo.origen === "propio"
+          ? "dado de alta a mano por una cuenta de la app que publica su catálogo."
+          : escaneo.origen === "volcado"
+            ? "producto de marca, de Open Food Facts. Nadie ha revisado sus cifras: compruébalas contra el envase."
+            : "no estaba en el catálogo; consultado ahora mismo en Open Food Facts. Nadie ha revisado sus cifras: compruébalas contra el envase."}
+      </p>
+      <AvisosEscaneo
+        avisos={escaneo.avisos}
+        titulo={graves ? "Estas cifras pueden estar mal" : "Un par de cosas de esta ficha"}
+      />
+    </>
   );
 }
 
@@ -458,17 +538,19 @@ function Sustitutos({ alimento, gramos }: { alimento: AlimentoPublico; gramos: n
   );
 }
 
-/** El segundo alimento, elegido a mano, y la tabla de los dos. */
+/** El segundo alimento, elegido a mano o por código, y la tabla de los dos. */
 function Contra({
   alimento,
   gramos,
   otro,
+  escaneo,
   onElegir,
 }: {
   alimento: AlimentoPublico;
   gramos: number;
   otro: AlimentoPublico | null;
-  onElegir: (a: AlimentoPublico | null) => void;
+  escaneo: Escaneo | null;
+  onElegir: (a: AlimentoPublico | null, escaneo?: Escaneo | null) => void;
 }) {
   const gOtro = otro ? gramosIsoenergeticos(alimento.kcal100, gramos, otro.kcal100) : null;
   const a = aporte(alimento, gramos);
@@ -485,7 +567,12 @@ function Contra({
         )}
       </div>
 
-      <BuscadorPublico etiqueta="Segundo alimento" valor={otro} onElegir={onElegir} />
+      <div className="paso">
+        <BuscadorPublico etiqueta="Segundo alimento" valor={otro} onElegir={(a) => onElegir(a)} />
+        <CodigoBarrasPublico onAlimento={onElegir} />
+      </div>
+
+      {otro && escaneo && <Procedencia escaneo={escaneo} />}
 
       {otro && (gOtro === null || b === null) && (
         <p className="aviso">

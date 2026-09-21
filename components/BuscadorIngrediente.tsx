@@ -11,7 +11,8 @@ import {
 } from "@/app/ingredientes/tipos";
 import { medidaPorDefecto, type Medida } from "@/lib/dominio/medidas";
 import { clienteNavegador } from "@/lib/supabase/cliente";
-import AltaPorCodigo, { AvisosEscaneo } from "./AltaPorCodigo";
+import AltaPorCodigo from "./AltaPorCodigo";
+import AvisosEscaneo from "./AvisosEscaneo";
 
 interface Sugerencia {
   id: number;
