@@ -34,6 +34,19 @@ const COLUMNAS =
 const normalizar = (s: string) =>
   s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
 
+const MAX_SUGERENCIAS = 15;
+
+/**
+ * Cuánto se parece un nombre a lo escrito; menos es mejor. «fruta» pone
+ * primero FRUTA, luego «Fruta de la pasión» y al final «Zumo de fruta».
+ */
+function parecido(nombre: string, q: string): number {
+  if (nombre === q) return 0;
+  if (nombre.startsWith(q)) return 1;
+  if (new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(nombre)) return 2;
+  return 3;
+}
+
 /**
  * Buscador en dos pasos: primero se elige el alimento, después la cantidad.
  *
@@ -80,15 +93,28 @@ export default function BuscadorIngrediente({
     const t = setTimeout(async () => {
       setBuscando(true);
       const supabase = clienteNavegador();
-      const { data } = await supabase
-        .from("ingredientes")
-        .select(COLUMNAS)
-        .ilike("nombre_norm", `%${q}%`)
-        .eq("preferente", true)
-        .order("nombre")
-        .limit(12);
+      // Genéricos y volcado por separado. Con una sola consulta alfabética y
+      // `limit(12)`, «fruta» se llenaba de «Agua con fruta», «Barrita de
+      // frutas»… del volcado de Open Food Facts (150.000 filas) y el genérico
+      // FRUTA no llegaba nunca a salir.
+      const base = () =>
+        supabase
+          .from("ingredientes")
+          .select(COLUMNAS)
+          .ilike("nombre_norm", `%${q}%`)
+          .eq("preferente", true)
+          .order("nombre");
+      const [genericos, volcado] = await Promise.all([
+        base().neq("fuente", "openfoodfacts").limit(40),
+        base().eq("fuente", "openfoodfacts").limit(30),
+      ]);
       if (sello !== ultima.current) return; // llegó tarde, ya se ha escrito más
-      setOpciones((data ?? []) as unknown as Sugerencia[]);
+      const ordenar = (l: unknown) =>
+        ((l ?? []) as Sugerencia[])
+          .map((o, i) => ({ o, i, p: parecido(normalizar(o.nombre), q) }))
+          .sort((a, b) => a.p - b.p || a.i - b.i)
+          .map(({ o }) => o);
+      setOpciones([...ordenar(genericos.data), ...ordenar(volcado.data)].slice(0, MAX_SUGERENCIAS));
       setAbierto(true);
       setBuscando(false);
     }, 180);
