@@ -18,6 +18,11 @@ import { NextResponse, type NextRequest } from "next/server";
 // sin dueño— y nada más. Que una ruta esté en esta lista NUNCA
 // es lo que la hace segura; lo que la hace segura es que no pueda pedir nada
 // que no deba.
+//
+// Desde la 0023 el comparador pide además el correo de una persona a quien no
+// haya entrado, pero esa puerta la pone la propia página —y cada una de sus
+// acciones—, no esta lista: aquí solo se sabe mandar a `/login`, y a una
+// persona que no tiene contraseña no hay que mandarla ahí.
 const PUBLICAS = ["/login", "/auth", "/escanear", "/comparador"];
 
 export async function middleware(peticion: NextRequest) {

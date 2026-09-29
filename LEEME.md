@@ -135,6 +135,7 @@ supabase/
   migraciones/0010_peso_persona.sql     el peso, para leer los macros en g/kg
   migraciones/0011_catalogo_publico.sql  el comparador abierto, sin sesión
   migraciones/0012_opciones_comida.sql   opciones dentro de una misma comida
+  migraciones/0023_acceso_comparador.sql el comparador, con el correo de una persona
   pruebas/                              andamio y 8 baterías contra PostgreSQL local
   datos/ingredientes.json.gz            catálogo de la fase 1
 scripts/cargar-ingredientes.mjs
@@ -153,7 +154,7 @@ lib/
 app/
   login, cuenta, personas, personas/[id], dietas/[id],
   dietas/[id]/historial, dietas/[id]/imprimir, comparar, ingredientes
-  comparador               PÚBLICA: comparar alimentos sin iniciar sesión
+  comparador               sin sesión, con el correo de una persona (0023)
   hoja.css                 el papel: estilos de pantalla e impresión
 components/
   EditorDieta.tsx          la pantalla de trabajo

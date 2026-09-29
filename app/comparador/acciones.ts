@@ -1,5 +1,8 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
 import {
   filtrosDePreseleccion,
   rankearPorMacro,
@@ -11,6 +14,14 @@ import { kcalAtwater, normalizarNombre } from "@/app/ingredientes/tipos";
 import { consultarOpenFoodFacts } from "@/lib/openfoodfacts/consultar";
 import { convertir } from "@/lib/openfoodfacts/convertir";
 import { normalizarEan } from "@/lib/openfoodfacts/ean";
+import type { EstadoFormulario } from "@/app/login/tipos";
+import {
+  accesoComparador,
+  DIAS_GALLETA,
+  exigirAccesoComparador,
+  GALLETA_COMPARADOR,
+} from "@/lib/acceso-comparador";
+import { normalizarCorreo } from "@/lib/correo";
 import { clienteServidor } from "@/lib/supabase/servidor";
 import type {
   AlimentoPublico,
@@ -38,7 +49,58 @@ import type {
  * sustituto: `candidatos_publicos` lo deja fuera desde la 0020, igual que
  * `buscarSustitutos` en `app/dietas/[id]/acciones.ts` con su
  * `neq("fuente", "openfoodfacts")`. El porqué está en esa migración.
+ *
+ * Desde la 0023, además, cada acción mira antes quién llama
+ * (`lib/acceso-comparador`): sesión iniciada o el correo de una persona. Las
+ * de buscar y puntuar contestan vacío en vez de lanzar, porque la pantalla las
+ * llama al teclear y no espera un error; a ellas solo se llega sin acceso si
+ * se lo han quitado a alguien con la página ya abierta.
  */
+
+// ----------------------------------------------------------------- la puerta
+
+/**
+ * Entrar con un correo.
+ *
+ * El mensaje de error sí dice «ese correo no tiene acceso», al contrario que el
+ * de `entrar` en el login: aquí el correo es la clave entera y no hay una
+ * contraseña que proteger no diciéndolo, y un «algo ha fallado» solo haría que
+ * quien se ha equivocado de correo no lo supiera.
+ */
+export async function entrarComparador(
+  _estado: EstadoFormulario,
+  datos: FormData,
+): Promise<EstadoFormulario> {
+  const bruto = String(datos.get("correo") ?? "");
+  if (!bruto.trim()) return { error: "Escribe tu correo." };
+  const correo = normalizarCorreo(bruto);
+  if (!correo) return { error: "Eso no parece un correo." };
+
+  const supabase = await clienteServidor();
+  const { data, error } = await supabase.rpc("correo_con_acceso_comparador", { correo });
+  if (error) return { error: "No se ha podido comprobar el correo. Vuelve a probar en un momento." };
+  if (data !== true)
+    return {
+      error:
+        "Ese correo no tiene acceso al comparador. Si crees que debería, " +
+        "pídele a tu entrenador que lo añada a tu ficha.",
+    };
+
+  (await cookies()).set(GALLETA_COMPARADOR, correo, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: DIAS_GALLETA * 24 * 60 * 60,
+  });
+  redirect("/comparador");
+}
+
+/** Olvidar el correo de este navegador. La sesión de la app, si la hay, no se toca. */
+export async function salirComparador() {
+  (await cookies()).delete(GALLETA_COMPARADOR);
+  redirect("/comparador");
+}
 
 type FilaBusqueda = {
   id: number; nombre: string; grupo: string | null; estado: string | null;
@@ -80,6 +142,7 @@ function aAlimento(f: FilaBusqueda): AlimentoPublico {
 export async function buscarAlimentos(texto: string): Promise<AlimentoPublico[]> {
   const q = normalizarNombre(texto ?? "").trim();
   if (q.length < 2) return [];
+  if (!(await accesoComparador())) return [];
 
   const supabase = await clienteServidor();
   const { data, error } = await supabase.rpc("buscar_alimentos_publico", {
@@ -112,6 +175,9 @@ export async function buscarAlimentos(texto: string): Promise<AlimentoPublico[]>
 export async function alimentoPorCodigo(bruto: string): Promise<ResultadoCodigoPublico> {
   const ean = normalizarEan(bruto ?? "");
   if (!ean) return { estado: "codigo_invalido" };
+  // Lanza: la pantalla ya trata un fallo de la acción como «no se ha podido
+  // buscar», que es lo que hay que decir.
+  await exigirAccesoComparador();
 
   // ------------------------------------------- 1. ¿está en el catálogo público?
   const supabase = await clienteServidor();
@@ -189,6 +255,7 @@ export async function sustitutosPublicos(datos: {
 }): Promise<PaginaSustitutos> {
   const vacio: PaginaSustitutos = { sustitutos: [], total: 0, mirados: 0 };
   if (!(datos.gramos > 0) || !(datos.alimento.kcal100 > 0)) return vacio;
+  if (!(await accesoComparador())) return vacio;
 
   const yo: Candidato = {
     id: datos.alimento.id,

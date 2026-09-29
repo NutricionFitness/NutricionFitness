@@ -76,7 +76,7 @@ export default function Login() {
       />
       <h1>Entrar</h1>
       <p className="sub">Con tu usuario y tu contraseña.</p>
-      <p style={{ fontSize: "0.8rem" }}>Acceso restringido para entrenadores. Si quieres acceder al comparador público pincha arriba en la pestaña <a href="https://nutricion-fitness.vercel.app/comparador"><em>Comparador</em></a>.</p>
+      <p style={{ fontSize: "0.8rem" }}>Acceso restringido para entrenadores. Si quieres acceder al comparador con tu correo pincha arriba en la pestaña <a href="https://nutricion-fitness.vercel.app/comparador"><em>Comparador</em></a>.</p>
 
       <form action={accionEntrar} className="tarjeta rejilla">
         <input type="hidden" name="siguiente" value={siguiente} />

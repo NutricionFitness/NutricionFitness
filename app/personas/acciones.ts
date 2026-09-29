@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { normalizarCorreo } from "@/lib/correo";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export async function crearPersona(datos: FormData) {
@@ -44,8 +45,15 @@ export async function actualizarPersona(
     notas: string | null;
     activa: boolean;
     peso_kg: number | null;
+    /** La clave del comparador (0023). Vacío lo quita. */
+    email: string | null;
   }>,
 ) {
+  if (cambios.email !== undefined) {
+    const correo = normalizarCorreo(cambios.email);
+    if (cambios.email?.trim() && !correo) throw new Error("Eso no parece un correo.");
+    cambios = { ...cambios, email: correo };
+  }
   const supabase = await clienteServidor();
   const { error } = await supabase.from("personas").update(cambios).eq("id", id);
   if (error) throw new Error(error.message);

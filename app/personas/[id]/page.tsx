@@ -20,7 +20,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
   const supabase = await clienteServidor();
 
   const { data: persona } = await supabase
-    .from("personas").select("id, nombre, notas, peso_kg").eq("id", id).single();
+    .from("personas").select("id, nombre, notas, peso_kg, email").eq("id", id).single();
   if (!persona) notFound();
 
   const { data: dietas } = await supabase
@@ -55,6 +55,7 @@ export default async function Persona({ params }: { params: Promise<{ id: string
           notas: (persona as { notas?: string | null }).notas ?? null,
           // `numeric` de PostgreSQL llega como cadena; sin esto, «70» sería "70".
           peso_kg: aNumeroOpcional((persona as { peso_kg?: unknown }).peso_kg, "peso_kg"),
+          email: (persona as { email?: string | null }).email ?? null,
         }}
         nDietas={dietas?.length ?? 0}
       />

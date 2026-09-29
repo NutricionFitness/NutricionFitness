@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { actualizarPersona, borrarPersona } from "@/app/personas/acciones";
+import { normalizarCorreo } from "@/lib/correo";
 import BotonPeligroso from "./BotonPeligroso";
 import NotaEditable from "./NotaEditable";
 
@@ -10,13 +11,21 @@ export default function CabeceraPersona({
   persona,
   nDietas,
 }: {
-  persona: { id: string; nombre: string; notas: string | null; peso_kg: number | null };
+  persona: {
+    id: string;
+    nombre: string;
+    notas: string | null;
+    peso_kg: number | null;
+    email: string | null;
+  };
   nDietas: number;
 }) {
   const [editando, setEditando] = useState(false);
   const [nombre, setNombre] = useState(persona.nombre);
   const [editandoPeso, setEditandoPeso] = useState(false);
   const [peso, setPeso] = useState(persona.peso_kg === null ? "" : String(persona.peso_kg));
+  const [editandoCorreo, setEditandoCorreo] = useState(false);
+  const [correo, setCorreo] = useState(persona.email ?? "");
   const [pendiente, iniciar] = useTransition();
 
   function guardar() {
@@ -36,6 +45,21 @@ export default function CabeceraPersona({
     iniciar(() =>
       actualizarPersona(persona.id, { peso_kg: pesoLimpio }).then(() => setEditandoPeso(false)),
     );
+  }
+
+  // Vacío también vale: es quitarle el acceso al comparador.
+  const correoValido = correo.trim() === "" || normalizarCorreo(correo) !== null;
+
+  function guardarCorreo() {
+    if (!correoValido) return;
+    iniciar(() =>
+      actualizarPersona(persona.id, { email: correo }).then(() => setEditandoCorreo(false)),
+    );
+  }
+
+  function cancelarCorreo() {
+    setCorreo(persona.email ?? "");
+    setEditandoCorreo(false);
   }
 
   return (
@@ -128,6 +152,47 @@ export default function CabeceraPersona({
             {persona.peso_kg === null
               ? "Poner peso"
               : `${persona.peso_kg.toLocaleString("es-ES")} kg`}
+          </button>
+        )}
+
+        {/* El correo es la llave del comparador (migración 0023): con él, la
+            persona entra sin cuenta en la app. Sin correo, no entra. */}
+        {editandoCorreo ? (
+          <span className="fila" style={{ gap: 6 }}>
+            <input
+              type="email"
+              value={correo}
+              autoFocus
+              placeholder="correo@ejemplo.es"
+              aria-label="Correo de la persona"
+              onChange={(e) => setCorreo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") guardarCorreo();
+                if (e.key === "Escape") cancelarCorreo();
+              }}
+              style={{ width: 240 }}
+            />
+            <button
+              className="principal"
+              onClick={guardarCorreo}
+              disabled={pendiente || !correoValido}
+            >
+              Guardar
+            </button>
+            <button onClick={cancelarCorreo}>Cancelar</button>
+            {!correoValido && (
+              <span className="aviso" style={{ fontSize: 12.5 }}>
+                No parece un correo.
+              </span>
+            )}
+          </span>
+        ) : (
+          <button
+            className="enlace"
+            onClick={() => setEditandoCorreo(true)}
+            title="Con este correo la persona puede entrar en el comparador"
+          >
+            {persona.email ?? "Poner correo"}
           </button>
         )}
 

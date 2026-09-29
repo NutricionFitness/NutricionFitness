@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import AccesoComparador from "@/components/AccesoComparador";
 import Comparador from "@/components/Comparador";
+import { accesoComparador } from "@/lib/acceso-comparador";
+import { salirComparador } from "./acciones";
 
 export const metadata: Metadata = {
   title: "Comparador de alimentos",
@@ -18,8 +21,15 @@ export const metadata: Metadata = {
  * con la del escaneo remoto—, así que no toca ninguna tabla: todo pasa por las
  * dos funciones públicas de la migración 0011, la de la 0021 (buscar por
  * código de barras) y las de la 0022 (escanear con el móvil sin sesión).
+ *
+ * Desde la 0023 no es de cualquiera: sin sesión se pide el correo de una
+ * persona dada de alta (`lib/acceso-comparador`). Sigue fuera de la lista del
+ * middleware porque la puerta es otra —un correo, no una contraseña— y la
+ * pone esta página, no la redirección a `/login`.
  */
-export default function PaginaComparador() {
+export default async function PaginaComparador() {
+  const acceso = await accesoComparador();
+
   return (
     <>
       <header className="cabecera-publica">
@@ -33,7 +43,7 @@ export default function PaginaComparador() {
         </p>
       </header>
 
-      <Comparador />
+      {acceso ? <Comparador /> : <AccesoComparador />}
 
       <footer className="pie-publico">
         <p>
@@ -71,6 +81,14 @@ export default function PaginaComparador() {
         <p>
           Volver a la página <Link href="/login">Entrar</Link>
         </p>
+        {acceso?.via === "correo" && (
+          <form action={salirComparador}>
+            <p>
+              Has entrado como <strong>{acceso.correo}</strong>.{" "}
+              <button className="enlace">No soy yo</button>
+            </p>
+          </form>
+        )}
       </footer>
     </>
   );

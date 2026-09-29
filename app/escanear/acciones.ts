@@ -2,6 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
+import { exigirAccesoComparador } from "@/lib/acceso-comparador";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 /**
@@ -138,8 +139,13 @@ export async function cerrarSesionEscaneo(token: string) {
  * Abre un vínculo sin dueño. Mismo token —144 bits del sistema—, misma
  * caducidad; lo que cambia es que lo guarda la función de la 0022 en vez de
  * un `insert` que `anon` no puede hacer.
+ *
+ * Solo abrirlo exige acceso al comparador (0023). Sondear y cerrar van por el
+ * token, que ya solo tiene quien lo ha abierto, y mirarlo cada dos segundos
+ * sería una consulta más en cada sondeo sin cerrar nada que no esté cerrado.
  */
 export async function abrirSesionEscaneoAnonima(): Promise<SesionEscaneo> {
+  await exigirAccesoComparador();
   const supabase = await clienteServidor();
   const token = randomBytes(18).toString("hex");
 
